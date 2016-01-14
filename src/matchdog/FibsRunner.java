@@ -28,6 +28,8 @@ import jcons.src.com.meyling.console.UnixConsole;
 public class FibsRunner extends Thread {
 	
 	static final int timoutSeconds = 90;
+	
+	int id;
 
 	Socket s;
 	InputStream sin;
@@ -61,6 +63,7 @@ public class FibsRunner extends Thread {
 	boolean processNextLine, terminating;
 	boolean getSavedMatches, gettingSaved, getOwnRating,
 	getOppRating, invitationInProgress;
+	Date terminatedAt;
 	
 	// Normally 'login()' will invoke 'getSavedMatches()' too but
 	// if that is not getting through to fibs the 'savedMatchs'
@@ -96,16 +99,15 @@ public class FibsRunner extends Thread {
 	String user = null;
 	TorExitNodeChecker torcheck = new TorExitNodeChecker();
 	
-	Timer keepalivetimer;
-	TimerTask keepalivetimertask;
-	
 	long lastLine;
 	
-	FibsRunner(MatchDog server, String host, int port) {
+	FibsRunner(MatchDog server, String host, int port, int id) {
 		super("FibsThred");
 		s = null;
+		this.id = id;
 		init = false;
 		terminating = false;
+		terminatedAt = null;
 		wOppMoveBoard = false;
 		wOppDoubleBoard = false;
 		wRollBoard = false;
@@ -149,7 +151,7 @@ public class FibsRunner extends Thread {
 		}
 		
 		//final String pid = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
-		setName("FibsRunner");
+		setName("FibsRunner-" + this.id);
 	}
 
 	@Override
@@ -179,14 +181,17 @@ public class FibsRunner extends Thread {
 			}
 		}
 		
-		startKeepAliveTimer();
-		
 		try {
 			
 			sin = s.getInputStream();
 			input = new BufferedReader(new InputStreamReader(sin));
 
-			while ((inputLine = input.readLine()) != null && run) {
+			while ((inputLine = input.readLine()) != null) {
+				
+				if(run != true || s.isInputShutdown() == true || s.isOutputShutdown() == true) {
+					server.printDebug("Stopping fibs: " + s.isInputShutdown() + " - " + s.isOutputShutdown());
+					break;
+				}
 				
 				lastLine = System.nanoTime();
 
@@ -216,18 +221,21 @@ public class FibsRunner extends Thread {
 					break;
 				}
 			}
-
-			terminate();
-			printDebug("Exiting FibsRunner thread");
+			
+			printDebug("Exiting FibsRunner thread - " + getName());
 			dead = true;
-
+			terminate();
 		}
 		catch (SocketException e) {
-			System.out.println("Fibs connection closed - RESTARTING FIBS");
-			restart();
+			System.out.println("Fibs connection closed - " + getName());
+			
+			if(terminating == false) {
+				System.out.println("Fibs connection closed - RESTARTING FIBS - " + getName());
+				restart();
+			}
 		}
 		catch (Exception err) {
-			System.out.println("FibsRunner(run): " + err);
+			System.out.println("FibsRunner(run): " + err +  " - " + getName());
 			err.printStackTrace();
 		}
 	}
@@ -346,11 +354,21 @@ public class FibsRunner extends Thread {
 			System.out.println();
 	
 			init = true;
+			synchronized (server) {
+				server.notify();
+			}
 	
 			if (server.prefs.isAutologin()) {
-				while (!outOK) {
-				    sleepFibs(200);
+				synchronized (this) {
+					try {
+						while(!outOK) {
+							this.wait(); 
+						}
+					} catch(InterruptedException e) {
+						return;
+					}
 				}
+				
 				login();
 				sleepFibs(400);
 				getSavedMatches();
@@ -589,15 +607,22 @@ public class FibsRunner extends Thread {
 	
 				printDebug("opp: " + opp + " ml: " + ml);
 			}
-		} else if(isInvitationInProgress() && in.startsWith("** " + opp + " didn't invite you")) {
-			// cancel an invitation that expires, i.e. after a 'want's to play a' from an 'opp'
-			// a sent 'invite opp' results in this (e.g. after a long net lag)
-			setInvitationInProgress(false);
-			printDebug("opp: " + opp + " invited but now FIBS thinks not");
 		}
-		if(isInvitationInProgress() && in.startsWith("** Error: " + opp + " is already playing")) {
-			setInvitationInProgress(false);
-			printDebug("opp: " + opp + " invited but playing with someone else now");
+		else if(isInvitationInProgress()) {
+			if(in.startsWith("** " + opp + " didn't invite you")) {
+				// cancel an invitation that expires, i.e. after a 'want's to play a' from an 'opp'
+				// a sent 'invite opp' results in this (e.g. after a long net lag)
+				setInvitationInProgress(false);
+				printDebug("opp: " + opp + " invited but now FIBS thinks not");
+			}
+			else if(in.startsWith("** Error: " + opp + " is already playing")) {
+				setInvitationInProgress(false);
+				printDebug("opp: " + opp + " invited but playing with someone else now");
+			}
+			else if(in.startsWith("** There is no one called " + opp )) {
+				setInvitationInProgress(false);
+				printDebug("opp: " + opp + " invited but disappeared");
+			}
 		}
 		
 		if (in.startsWith("5 " + opp) && getExp) {
@@ -2089,7 +2114,7 @@ public class FibsRunner extends Thread {
 		//match.stat.putLastLog(tmp);
 	}
 
-	protected void fibsCommand(String fibscommand) {
+	protected void printFibsCommand(String fibscommand) {
 		console.setForegroundColor(ConsoleForegroundColor.WHITE);
 		console.setBackgroundColor(ConsoleBackgroundColor.DARK_YELLOW);
 		System.out.print(fibscommand + UnixConsole.RESET);
@@ -2105,44 +2130,54 @@ public class FibsRunner extends Thread {
 			return;
 		}
 		terminating = true;
-		keepalivetimertask.cancel();
-		keepalivetimer = null;
 		
-		printDebug("Terminating FibsRunner");
+		printDebug("Terminating FibsRunner - " + getName());
 		if(match != null) {
 			printDebug("Terminating FibsRunner: dropping match");
-			server.fibsout.println("leave");
 			match.setDropped(true);
 			stopMatch();
+			
+			if(s.isOutputShutdown() == false && s.isConnected() == true && s.isClosed() == false) {
+				server.fibsout.println("leave");
+			}
 		}
 		
+		PrintWriter _fibsout = server.fibsout;
+		OutputStream _fibsos = server.fibsos;
+		
+		server.fibsout = null;
+		server.fibsos = null;
+		server.fibs = null;
+		
+		synchronized (server) {
+			server.notify();
+		}
 		/*if(server.fibsout != null && s.isOutputShutdown() == false) {
 			server.fibsout.println("logout");
 			printDebug("Terminating FibsRunner: sent 'logout'");
 		}*/
 		
-		this.run = false;
 		try {
-			FibsRunner.sleep(1000);
+			s.shutdownInput();
+			s.shutdownOutput();
+			FibsRunner.sleep(800);
 			
 			input.close();
 			sin.close();
-			server.fibsout.close();
-			server.fibsos.close();
+			_fibsout.close();
+			_fibsos.close();
 			s.close();
-			
-			FibsRunner.sleep(500);
-			
+	
 		} catch(IOException e) {
 			printDebug("Exception closing socket to fibs: " + e.getMessage());
 		} catch(InterruptedException e) {
 			printDebug("Exception sleeping fibs thread (in terminate()): " + e.getMessage());
 		} catch(Exception e) {
-			printDebug("Exception (in terminate()): " + e.getMessage());
+			printDebug("Exception (in terminate()): " + e.getClass() + " > " + e.getMessage());
+			e.printStackTrace();
 		}
+		printDebug("Terminating FibsRunner - " + getName() + " s.closed: " + s.isClosed() );
 		
-		server.fibsout = null;
-		server.fibsos = null;
 	}
 
 	protected void sleepFibs(long millis) {
@@ -2151,37 +2186,6 @@ public class FibsRunner extends Thread {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-	}
-	
-	private void startKeepAliveTimer() {
-		
-		if(keepalivetimertask != null) {
-			keepalivetimer.cancel();
-		}
-		
-		keepalivetimer = new Timer();
-		keepalivetimertask = new TimerTask() {
-			
-			@Override 
-			public void run() {
-				//keepAlive();
-				
-				if(run != true || terminating == true) {
-					this.cancel();
-					return;
-				}
-				
-				printDebug("KeepAlive(" + keepalivetimer.hashCode() + ")" + s.isInputShutdown() + " - " + s.isOutputShutdown() 
-						+ " | last fibsline: " + getFibsLastLineSecondsAgo() + " sec");
-				
-				if(getFibsLastLineSecondsAgo() > FibsRunner.timoutSeconds) {
-					printDebug(" *** No line from fibs for " + FibsRunner.timoutSeconds + " seconds, RESTARTING ***");
-					restart();
-				}
-				
-			}
-		};	
-		keepalivetimer.schedule(keepalivetimertask, 48000L, 28000L);
 	}
 	
 	private void keepAlive() {

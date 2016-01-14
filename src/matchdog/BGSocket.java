@@ -144,7 +144,7 @@ public class BGSocket extends Thread  {
 			server.fibs.sleepFibs(100);
 			server.fibsout.println(fibscommand);
 			server.printDebug("bgsocket: sent2fibs: ");
-			server.fibs.fibsCommand(fibscommand);
+			server.fibs.printFibsCommand(fibscommand);
 			server.printDebug("");
 			server.fibs.printMatchInfo();
 				
@@ -215,12 +215,36 @@ public class BGSocket extends Thread  {
 
 	public void connect() {
 		server.printDebug("Connecting to bgsocket ");
-		int c = 0, cc = 0;
+		
+		while(connected != true) {
+			try {
+				BGSocket.sleep(100);
+				sa = InetAddress.getByName("localhost");
+				s = new Socket(sa, server.prefs.getGnuBgPort());
+				if(s.isConnected()) {
+					System.out.println();
+					server.printDebug("Successfully connected to bg socket");
+					connected = true;					
+				}
+				sin = s.getInputStream();
+				sout = s.getOutputStream();	
+				in = new BufferedReader(new InputStreamReader(sin ));
+				out = new PrintWriter(sout, true);	
+				
+			} catch(InterruptedException e) {
+				return;
+			} catch(Exception e) {
+				server.printDebug("Exception in BGSocket.connect(): " + e.getMessage());
+			}
+		}
+		
+		/*int c = 0, cc = 0;
 		while(!connected) {
 			try {
 				sa = InetAddress.getByName("localhost");
 				s = new Socket(sa, server.prefs.getGnuBgPort());
 				if(s.isConnected()) {
+					System.out.println();
 					server.printDebug("Successfully connected to bg socket");
 					connected = true;					
 				}
@@ -240,7 +264,7 @@ public class BGSocket extends Thread  {
 						+ server.prefs.getGnuBgPort() + ")");
 				break;
 			}
-		}
+		}*/
 	}	
 	
 	public void terminate() {

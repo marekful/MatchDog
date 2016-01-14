@@ -2,6 +2,8 @@ package matchdog;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.net.*;
+import java.io.*;
 
 public class MatchDogServer {
 	
@@ -159,16 +161,16 @@ public class MatchDogServer {
 				4,  3,  -1,  0, 0,					
 				
 				"MonteCarlo", 1,
-				"GammonBot_XI", 1,
-				"GammonBot_XVI", 1,
-				"GammonBot_II", 1,
-				"GammonBot_XVII", 1,
-				
-				"GammonBot_XIII", 1,
+				"GammonBot_IX", 1,
+				"GammonBot_IV", 1,
 				"GammonBot_X", 1,
-				"GammonBot_XX", 1,
-				"GammonBot_XIX", 1,
+				"GammonBot_VI", 1,
+				
 				"GammonBot_XVIII", 1,
+				"GammonBot_XVI", 1,
+				"GammonBot_XIII", 1,
+				"GammonBot_II", 1,
+				"GammonBot_VIII", 1,
 				
 				4537
 		};		
@@ -209,8 +211,8 @@ public class MatchDogServer {
 		players.put(3, new PlayerPrefs(prefs));
 		prefs = new Object [] {
 				"MatchDog", "malako",
-				true, true, true,
-				true, true, 15,
+				true, false, false,
+				false, false, 15,
 				100, -22000,
 				3, 3, 0.0,			
 				
@@ -226,16 +228,16 @@ public class MatchDogServer {
 				4,  3,  -1,  0, 0,	
 				
 				"GammonBot_XVIII", 11,
-				"GammonBot_XII", 11,
-				"GammonBot_X", 11,
 				"GammonBot_IX", 11,
-				"GammonBot_XVI", 11,
-				
-				"GammonBot_XIII", 11,
-				"GammonBot_VIII", 11,
-				"GammonBot_XVII", 11,
-				"GammonBot_XIX", 11,
 				"GammonBot_IV", 11,
+				"GammonBot_X", 11,
+				"GammonBot_VI", 11,
+				
+				"GammonBot_XVIII", 11,
+				"GammonBot_XVI", 11,
+				"GammonBot_XIII", 11,
+				"GammonBot_II", 11,
+				"GammonBot_XII", 11,
 				
 				4548
 		};		
@@ -262,8 +264,48 @@ public class MatchDogServer {
 		}		
 		
 		MatchDog g = new MatchDog(players.get(currentplayer), globalblacklist);
-	
+		g.setScanner(System.in);
 		g.start();
 		
-	}	
+		//startServer(g);
+
+	}
+	
+	private synchronized void startServer(MatchDog g) {
+		ServerSocket ss;
+		Socket sss;
+		InputStream ssins;
+		OutputStream ssouts;
+		PrintWriter ssout;
+		BufferedReader ssin;
+		try {
+			
+			ss = new ServerSocket(2223);
+			
+			while(true) {
+				g.printDebug(">>> waiting for connection on 2223 ");
+				sss = ss.accept();
+				g.printDebug(">>> connection ");
+				
+				ssins = sss.getInputStream();
+				ssouts = sss.getOutputStream();
+				
+				g.setScanner(ssins);
+				
+				ssout = new PrintWriter(ssouts);
+				ssin = new BufferedReader(new InputStreamReader(ssins));
+				
+				/*String line;
+				while((line = ssin.readLine()) != null) {
+					g.printDebug(">>> >>> " + line);
+				}
+				g.setScanner(System.in);*/
+			}
+
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
+		g.printDebug(">>> connection closed ");
+		g.setScanner(System.in);
+	}
 }

@@ -56,6 +56,9 @@ public class BGRunner extends Thread {
 				
 				if(line.startsWith("Waiting for a connection")) {
 					isExternal = true;
+					//synchronized(server.bgsocket) {
+					//	server.bgsocket.notify();
+					//}
 				}
 				
 				System.out.println();

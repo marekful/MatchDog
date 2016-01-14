@@ -11,7 +11,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
-
+import java.util.Timer;
+import java.util.TimerTask;
+import java.io.*;
 
 import jcons.src.com.meyling.console.Console;
 import jcons.src.com.meyling.console.ConsoleBackgroundColor;
@@ -29,6 +31,7 @@ public class MatchDog extends Thread  {
 
 	BGRunner gnubg;
 	FibsRunner fibs;
+	Scanner scanner;
 	OutputStream gnubgos;
 	PrintWriter gnubgout;
 	OutputStream fibsos;
@@ -50,6 +53,9 @@ public class MatchDog extends Thread  {
 	
 	HashMap<Integer, String> bl = new HashMap<Integer, String>();
 	HashMap<String, String> statrequests = new HashMap<String, String>();
+	
+	Timer keepalivetimer;
+	TimerTask keepalivetimertask;
 	
 	protected int fibsmode;	
 	
@@ -81,36 +87,34 @@ public class MatchDog extends Thread  {
 		
 		// global blacklist
 		this.bl = bl;
+		
 	}
 	
 	public void run() {
 	
 		pstatspath = prefs.name + ".pstats";
 		String line = "";
-		Scanner scanner = new java.util.Scanner(System.in);
 
 		try {
 			if(prefs.getGnuBgPort() == 0) {
 				print("NOT starting gnubg");
 				setFibsmode(3);
 			} else {
-				synchronized (this) {
-					initGnuBg();
-					while(!gnubg.init) {
-						this.wait();
-					}
-					
-					initBgSocket();
-					while(!bgsocket.run) {
-						this.wait();
-					}
-					
-					initPlayerStats();
-					statview = new StatWriter(this);
-					
-					initFibs();
-					
-				}
+
+				initGnuBg();
+				printDebug("gnubg running");
+				
+				initBgSocket();
+				printDebug("external connected");
+				
+				initPlayerStats();
+				statview = new StatWriter(this);
+				
+				initFibs();
+				printDebug("fibs connected");
+				
+				keepAliveFibs();
+
 			}
 			
 
@@ -182,10 +186,12 @@ public class MatchDog extends Thread  {
 			} else if(line.equals("31")) {
 				prefs.setAutoinvite( (prefs.isAutoinvite()) ? false : true );
 				printDebug("autoinvite is now: " + prefs.isAutoinvite());
+				System.out.println();
 				continue;
 			} else if(line.equals("32")) {
 				prefs.setAutojoin((prefs.isAutojoin()) ? false : true );
 				printDebug("autojoin is now: " + prefs.isAutojoin());
+				System.out.println();
 				continue;
 			} else if(line.equals("9")) {
 				
@@ -252,58 +258,73 @@ public class MatchDog extends Thread  {
 		stopInviter();
 		stopBgSocket();
 		stopGnubg();
+		keepalivetimertask.cancel();
 		fibs.terminate();
 		if(gnubg == null && bgsocket == null) {
-			printDebug("waiting fibs");
+			printDebug("waiting fibs 0");
 			while(fibs != null || !fibs.dead) {}
 		} else {
-			printDebug("waiting fibs");
-			while(!(bgsocket.dead && gnubg.dead && fibs.dead)) {}
+			printDebug("waiting fibs 1");
+			while(!(bgsocket.dead && gnubg.dead && (fibs == null || fibs.dead))) {}
 		}
 		printDebug("Exiting MatchDog Server");
 		printDebug("bye");
 		System.out.println();
 		System.exit(0);
 	}
+	
+	public void setScanner(InputStream in) {
+		scanner = new java.util.Scanner(in);
+	}
 
 
-	private void initFibs() {
+	private synchronized void initFibs() {
 		System.out.println();
 		print("Initialising fibs");
-		fibs = new FibsRunner(this, getFibsHost(), getFibsPort());
+		fibs = new FibsRunner(this, getFibsHost(), getFibsPort(), fibsCount);
 		
 		fibs.start();				
 
 		System.out.println();
 		print("Connecting to fibs ");
 		
-		int c = 0;
-		while(!fibs.init) {
-		    fibs.sleepFibs(500);
-		    
-		    if(c % 10 == 0) {
-		    	System.out.print(". ");
-		    }
-		    c++;
-		}
-		fibsCount++;
-		
 		try {
+			while(!fibs.init) { // init is 
+			    this.wait();
+			}
+			fibsCount++;
 			fibsos = fibs.s.getOutputStream();	
+			
+		} catch(InterruptedException e) {
+			e.printStackTrace();
 		} catch(IOException e) {
 			e.printStackTrace();
 		}
 		fibsout = new PrintWriter(fibsos, true);
 		fibs.outOK = true;
+		synchronized (fibs) {
+			fibs.notify();
+		}
 	}
 	
-	protected void restartFibs() {
+	protected synchronized void restartFibs() {
 		fibs.terminate();
+
+		try {
+			
+			while(fibs != null) {
+				printDebug("Waiting for fibs to quit");
+				this.wait();
+			}
+			
+		} catch(Exception e) {
+			printDebug("Exception in restartFibs()" + e.getMessage());
+		}
 		initFibs();
 	}
 
 
-	protected void initGnuBg() {
+	protected synchronized void initGnuBg() {
 		System.out.println();
 		print("Initialising gnubg");
 		gnubg = new BGRunner(getGnuBgCmd(), this, prefs.getGnuBgPort());
@@ -311,14 +332,13 @@ public class MatchDog extends Thread  {
 		
 		System.out.println();
 		print("Waiting for gnubg ");
-		int c = 0, cc = 0;
-		while(!gnubg.init) {
-			c++;
-			if(c % 100000000 == 1) {
-				cc++;
-				System.out.print(".");
-			}
-		};
+		try {
+			while(!gnubg.init) {
+				this.wait();
+			};
+		} catch(InterruptedException e) {
+			e.printStackTrace();
+		}
 
 		gnubgos = gnubg.p.getOutputStream();	
 		gnubgout = new PrintWriter(gnubgos, true);
@@ -342,6 +362,7 @@ public class MatchDog extends Thread  {
 		}
 		
 		gnubgout.println("external localhost:" + prefs.getGnuBgPort());
+		
 	}
 
 	protected void stopGnubg() {
@@ -407,6 +428,39 @@ public class MatchDog extends Thread  {
 			printDebug("Inviter terminated");	
 			inviter = null;
 		}		
+	}
+	
+	private void keepAliveFibs() {
+		
+		if(keepalivetimertask != null) {
+			keepalivetimer.cancel();
+		}
+		
+		keepalivetimer = new Timer();
+		keepalivetimertask = new TimerTask() {
+			
+			@Override 
+			public void run() {
+				
+				printDebug("KeepAlive");
+				printDebug("KeepAlive(" + keepalivetimer.hashCode() + ") " 
+						+ fibs.s.isInputShutdown() + " - " + fibs.s.isOutputShutdown() + " - "
+						+ fibs.terminating + " | last fibsline: " + fibs.getFibsLastLineSecondsAgo() + " sec");
+				
+				if(fibs.terminating == true) {
+					return;
+				}
+				
+				// fibs.input.ensureOpen()
+				
+				if(fibs.getFibsLastLineSecondsAgo() > FibsRunner.timoutSeconds) {
+					printDebug(" *** No line from fibs for " + FibsRunner.timoutSeconds + " seconds, RESTARTING ***");
+					restartFibs();
+				}
+				
+			}
+		};	
+		keepalivetimer.schedule(keepalivetimertask, 48000L, 28000L);
 	}
 	
 	private static void print(String msg) {

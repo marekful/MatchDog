@@ -130,8 +130,8 @@ public class Match {
 		long fibsDiff = server.fibs.getFibsLastLineSecondsAgo();
 		
 		if(isMyTurn()) {
-			diff = now.getTime() - getMystamp().getTime() - fibsDiff;
-			server.printDebug("(my diff is " + diff + "(" + fibsDiff + ") ms)");
+			diff = now.getTime() - getMystamp().getTime() - fibsDiff * 1000;
+			server.printDebug("(my diff is " + diff + "(" + fibsDiff * 1000 + ") ms)");
 			if(diff > 20000) {
 				if(isOwnResignInProgress()) {
 					server.fibsout.println("k I resigned, check your client!" +
@@ -142,7 +142,7 @@ public class Match {
 				}
 			}
 		} else if(isOppsTurn()) {
-			diff = now.getTime() - getOppstamp().getTime() - fibsDiff;
+			diff = now.getTime() - getOppstamp().getTime() - fibsDiff * 1000;
 			server.printDebug("(opp's diff is " + (diff / 1000) + "(" + fibsDiff + ") sec)");
 			if(diff > 90000 && callcounter < 2) {
 				
