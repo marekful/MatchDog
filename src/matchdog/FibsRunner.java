@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 import java.net.ConnectException;
 import java.net.InetAddress;
@@ -2018,16 +2019,19 @@ public class FibsRunner extends Thread {
 				return;
 			}
 		}*/
-		System.out.println();
-		console.setForegroundColor(ConsoleForegroundColor.WHITE);
-		console.setBackgroundColor(ConsoleBackgroundColor.DARK_GREEN);
-		System.out.print("fibs[" + server.getFibsmode() + "]: "
-				+ UnixConsole.RESET);
-		System.out.print(str);
+		for(PrintStream os : server.listeners.values()) {
 
+			os.println();
+			console.setForegroundColor(ConsoleForegroundColor.WHITE);
+			console.setBackgroundColor(ConsoleBackgroundColor.DARK_GREEN);
+			os.print("fibs[" + server.getFibsmode() + "]: "
+					+ UnixConsole.RESET);
+			os.print(str);
+			os.flush();
+		}
 	}
 
-	private void getSavedMatches() {
+	public void getSavedMatches() {
 		getSavedMatches = true;
 		server.fibsout.println("show saved");
 	}
@@ -2115,9 +2119,12 @@ public class FibsRunner extends Thread {
 	}
 
 	protected void printFibsCommand(String fibscommand) {
-		console.setForegroundColor(ConsoleForegroundColor.WHITE);
-		console.setBackgroundColor(ConsoleBackgroundColor.DARK_YELLOW);
-		System.out.print(fibscommand + UnixConsole.RESET);
+		for(PrintStream os : server.listeners.values()) {
+			console.setForegroundColor(ConsoleForegroundColor.WHITE);
+			console.setBackgroundColor(ConsoleBackgroundColor.DARK_YELLOW);
+			os.print(fibscommand + UnixConsole.RESET);
+			os.flush();
+		}
 		//match.stat.putLastLog(fibscommand);
 	}
 

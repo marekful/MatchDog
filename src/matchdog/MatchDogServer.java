@@ -9,8 +9,6 @@ public class MatchDogServer {
 	
 	/* SET PROGRAM PARAMETERS HERE */
 	/// SET PROGRAM PARAMETERS HERE
-	// Full path to telnet
-	public static final String 	telnetcmd 	= "/usr/bin/telnet";	
 	// Fibs host
 	public static final String 	fibshost 	= "fibs.com";
 	// Fibs port
@@ -104,7 +102,7 @@ public class MatchDogServer {
 				"", 0,
 				"", 0,
 				
-				0						// gnubg external port port
+				0, 0					// gnubg external port port
 										// if 0 (zero), gnubg is not started up
 										// (tormonitor mode ;))
 		};
@@ -139,7 +137,7 @@ public class MatchDogServer {
 				"", 0,
 				"", 0,
 				
-				4546
+				4546, 0
 		};		
 		players.put(1, new PlayerPrefs(prefs));
 		prefs = new Object [] {
@@ -172,7 +170,7 @@ public class MatchDogServer {
 				"GammonBot_II", 1,
 				"GammonBot_VIII", 1,
 				
-				4537
+				4537, 55222
 		};		
 		players.put(2, new PlayerPrefs(prefs));
 		prefs = new Object [] {
@@ -205,13 +203,13 @@ public class MatchDogServer {
 				"", 0,
 				"", 0,
 				
-				0
+				0, 0
 
 		};		
 		players.put(3, new PlayerPrefs(prefs));
 		prefs = new Object [] {
 				"MatchDog", "malako",
-				true, false, false,
+				true, false, true,
 				false, false, 15,
 				100, -22000,
 				3, 3, 0.0,			
@@ -239,7 +237,7 @@ public class MatchDogServer {
 				"GammonBot_II", 11,
 				"GammonBot_XII", 11,
 				
-				4548
+				4548, 55221
 		};		
 		players.put(4, new PlayerPrefs(prefs));
 		
@@ -264,10 +262,11 @@ public class MatchDogServer {
 		}		
 		
 		MatchDog g = new MatchDog(players.get(currentplayer), globalblacklist);
-		g.setScanner(System.in);
 		g.start();
 		
-		//startServer(g);
+		if(g.prefs.getListenerPort() > 0) {
+			startServer(g);
+		}
 
 	}
 	
@@ -280,32 +279,25 @@ public class MatchDogServer {
 		BufferedReader ssin;
 		try {
 			
-			ss = new ServerSocket(2223);
+			ss = new ServerSocket(g.prefs.getListenerPort());
 			
 			while(true) {
-				g.printDebug(">>> waiting for connection on 2223 ");
+				g.printDebug(">>> waiting for connection on port " + g.prefs.getListenerPort());
 				sss = ss.accept();
-				g.printDebug(">>> connection ");
+				g.printDebug(">>> connection from " + sss.getLocalSocketAddress()	);
 				
-				ssins = sss.getInputStream();
-				ssouts = sss.getOutputStream();
+				PrintWriter _p = new PrintWriter(sss.getOutputStream());
+				_p.print("Hello");
+				_p.println();
+				_p.flush();
 				
-				g.setScanner(ssins);
-				
-				ssout = new PrintWriter(ssouts);
-				ssin = new BufferedReader(new InputStreamReader(ssins));
-				
-				/*String line;
-				while((line = ssin.readLine()) != null) {
-					g.printDebug(">>> >>> " + line);
-				}
-				g.setScanner(System.in);*/
+				g.listen(sss.getInputStream(), sss.getOutputStream());
 			}
 
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
-		g.printDebug(">>> connection closed ");
-		g.setScanner(System.in);
+		g.printDebug(">>> listener stopped ");
+		//g.setScanner(System.in);
 	}
 }

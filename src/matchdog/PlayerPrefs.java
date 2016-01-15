@@ -11,7 +11,7 @@ class PlayerPrefs {
 	Object [] prefsObj;
 	String name, pw;
 	boolean autoLogin, autoInvite, autoJoin, autoInviteSaved, autoJoinSaved;
-	int maxml, checkquerply, cubedecply, expDivider, repLimit, port;
+	int maxml, checkquerply, cubedecply, expDivider, repLimit, gnubgPort, listenerPort;
 	double noise;
 	String [] movefilters = {"", "", "", "", "", "", "", "", "", ""};
 	Map<String, Integer> preferredOpps;
@@ -71,7 +71,9 @@ class PlayerPrefs {
 								Integer.parseInt(prefsObj[i + 1].toString()));
 					}
 				} else if(i == 83) {
-					port = Integer.parseInt(prefsObj[i].toString());
+					gnubgPort = Integer.parseInt(prefsObj[i].toString());
+				} else if(i == 84) {
+					listenerPort = Integer.parseInt(prefsObj[i].toString());
 				}
 			}
 		} catch(Exception e) {
@@ -228,6 +230,10 @@ class PlayerPrefs {
 	}
 	
 	public int getGnuBgPort() {
-		return port;
+		return gnubgPort;
+	}
+	
+	public int getListenerPort() {
+		return listenerPort;
 	}
 }

@@ -214,7 +214,6 @@ public class BGSocket extends Thread  {
 	}
 
 	public void connect() {
-		server.printDebug("Connecting to bgsocket ");
 		
 		while(connected != true) {
 			try {
@@ -223,7 +222,7 @@ public class BGSocket extends Thread  {
 				s = new Socket(sa, server.prefs.getGnuBgPort());
 				if(s.isConnected()) {
 					System.out.println();
-					server.printDebug("Successfully connected to bg socket");
+					server.print("Successfully connected to bg socket", true);
 					connected = true;					
 				}
 				sin = s.getInputStream();
@@ -234,7 +233,7 @@ public class BGSocket extends Thread  {
 			} catch(InterruptedException e) {
 				return;
 			} catch(Exception e) {
-				server.printDebug("Exception in BGSocket.connect(): " + e.getMessage());
+				server.print("Exception in BGSocket.connect(): " + e.getMessage(), true);
 			}
 		}
 		
