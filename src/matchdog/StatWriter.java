@@ -303,7 +303,7 @@ public class StatWriter {
 							+ server.playerstats.getSince(0) + "]");
 					logfile.close();
 				} catch (IOException e) {
-					System.out.println(e);
+					server.println(e.getMessage());
 				}
 			}
 			printDebug("");

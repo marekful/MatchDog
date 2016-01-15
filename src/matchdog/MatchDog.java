@@ -48,7 +48,7 @@ public class MatchDog extends Thread  {
 	String pstatspath;
 	String outputName;
 	double ownRating;
-	boolean contd;
+	boolean contd, listenLocal;
 	
 	HashMap<Integer, String> bl = new HashMap<Integer, String>();
 	HashMap<String, String> statrequests = new HashMap<String, String>();
@@ -59,9 +59,10 @@ public class MatchDog extends Thread  {
 	
 	protected int fibsmode;
 	
-	MatchDog(PlayerPrefs prefs, HashMap<Integer, String> bl) {
+	MatchDog(PlayerPrefs prefs, HashMap<Integer, String> bl, boolean listenLocal) {
 		
 		this.prefs = prefs;
+		this.listenLocal = listenLocal;
 		
 		gnubg = null;
 		fibs = null;
@@ -94,11 +95,13 @@ public class MatchDog extends Thread  {
 	
 		pstatspath = prefs.name + ".pstats";
 		
-		listeners.put(0, System.out);
+		if(listenLocal == true) {
+			listeners.put(0, System.out);
+		}
 		
 		try {
 			if(prefs.getGnuBgPort() == 0) {
-				print("NOT starting gnubg", false);
+				print("NOT starting gnubg");
 				setFibsmode(3);
 			} else {
 
@@ -117,12 +120,14 @@ public class MatchDog extends Thread  {
 			
 
 		} catch (Exception e) {
-			System.out.println(this.getClass().toString() 
+			println(this.getClass().toString() 
 									+ "(runServer): " + e);
 			e.printStackTrace();
 		}
 		
-		listen(System.in, System.out);
+		if(listenLocal == true) {
+			listen(System.in, System.out);
+		}
 	}
 	
 	
@@ -152,7 +157,7 @@ public class MatchDog extends Thread  {
 			}
 			
 			if(contd) {
-				print(PROMPT, output, false);
+				print(PROMPT, output);
 			}
 			
 			
@@ -320,12 +325,12 @@ public class MatchDog extends Thread  {
 	}
 
 	private synchronized void initFibs() {
-		print("Initialising fibs", true);
+		println("Initialising fibs");
 		fibs = new FibsRunner(this, getFibsHost(), getFibsPort(), fibsCount);
 		
 		fibs.start();				
 
-		print("Connecting to fibs ", true);
+		println("Connecting to fibs ");
 		
 		try {
 			while(!fibs.init) { // init is 
@@ -365,11 +370,11 @@ public class MatchDog extends Thread  {
 
 	protected synchronized void initGnuBg() {
 
-		print("Initialising gnubg", true);
+		println("Initialising gnubg");
 		gnubg = new BGRunner(getGnuBgCmd(), this, prefs.getGnuBgPort());
 		gnubg.start();	
 		
-		print("Waiting for gnubg ", true);
+		println("Waiting for gnubg ");
 		try {
 			while(!gnubg.init) {
 				this.wait();
@@ -377,7 +382,7 @@ public class MatchDog extends Thread  {
 		} catch(InterruptedException e) {
 			e.printStackTrace();
 		}
-		print("gnubg running", true);
+		println("gnubg running");
 
 		gnubgos = gnubg.p.getOutputStream();	
 		gnubgout = new PrintWriter(gnubgos, true);
@@ -412,9 +417,9 @@ public class MatchDog extends Thread  {
 	}
 	
 	protected void initBgSocket() {
-		print("Initialising bg socket", true);
+		println("Initialising bg socket");
 		bgsocket = new BGSocket(this);
-		print("Connecting bg socket", true);
+		println("Connecting bg socket");
 		bgsocket.connect();
 		bgsocket.start();
 	}
@@ -504,28 +509,34 @@ public class MatchDog extends Thread  {
 		keepalivetimer.schedule(keepalivetimertask, 48000L, 28000L);
 	}
 	
-	protected void print(String msg, PrintStream os, boolean startWithNewline) {
-		if(startWithNewline == true) {
-			os.println();
-		}
+	protected void print(String msg, PrintStream os) {
 		console.setForegroundColor(ConsoleForegroundColor.WHITE);
 		console.setBackgroundColor(ConsoleBackgroundColor.DARK_RED);
-		os.print("system: " + UnixConsole.RESET );				
+		os.print("system:" + UnixConsole.RESET + " ");				
 		os.print(msg);
 		os.flush();
 		
 	}
 	
-	protected void print(String msg, boolean startWithNewline) {
+	protected void print(String msg) {
 		for(PrintStream os : listeners.values()) {
-			if(startWithNewline == true) {
-				os.println();
-			}
-			console.setForegroundColor(ConsoleForegroundColor.WHITE);
-			console.setBackgroundColor(ConsoleBackgroundColor.DARK_RED);
-			os.print("system: " + UnixConsole.RESET );				
-			os.print(msg);
-			os.flush();
+			print(msg, os);
+		}
+	}
+	
+	
+	protected void println(String msg, PrintStream os) {
+		os.println();
+		console.setForegroundColor(ConsoleForegroundColor.WHITE);
+		console.setBackgroundColor(ConsoleBackgroundColor.DARK_RED);
+		os.print("system:" + UnixConsole.RESET + " ");				
+		os.print(msg);
+		os.flush();
+	}
+	
+	protected void println(String msg) {
+		for(PrintStream os : listeners.values()) {
+			println(msg, os);
 		}
 	}
 	
@@ -539,7 +550,7 @@ public class MatchDog extends Thread  {
 			}
 			console.setForegroundColor(ConsoleForegroundColor.BLACK);
 			console.setBackgroundColor(ConsoleBackgroundColor.GREY);
-			os.print("MatchDog[" + c + "]: " + UnixConsole.RESET);
+			os.print("MatchDog[" + c + "]:" + UnixConsole.RESET + " ");
 			os.print( str + UnixConsole.RESET);
 			os.flush();
 		}

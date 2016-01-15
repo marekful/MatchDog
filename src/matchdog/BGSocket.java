@@ -221,8 +221,7 @@ public class BGSocket extends Thread  {
 				sa = InetAddress.getByName("localhost");
 				s = new Socket(sa, server.prefs.getGnuBgPort());
 				if(s.isConnected()) {
-					System.out.println();
-					server.print("Successfully connected to bg socket", true);
+					server.println("Successfully connected to bg socket");
 					connected = true;					
 				}
 				sin = s.getInputStream();
@@ -233,37 +232,9 @@ public class BGSocket extends Thread  {
 			} catch(InterruptedException e) {
 				return;
 			} catch(Exception e) {
-				server.print("Exception in BGSocket.connect(): " + e.getMessage(), true);
+				server.println("Exception in BGSocket.connect(): " + e.getMessage());
 			}
 		}
-		
-		/*int c = 0, cc = 0;
-		while(!connected) {
-			try {
-				sa = InetAddress.getByName("localhost");
-				s = new Socket(sa, server.prefs.getGnuBgPort());
-				if(s.isConnected()) {
-					System.out.println();
-					server.printDebug("Successfully connected to bg socket");
-					connected = true;					
-				}
-				sin = s.getInputStream();
-				sout = s.getOutputStream();	
-				in = new BufferedReader(new InputStreamReader(sin ));
-				out = new PrintWriter(sout, true);			
-			} catch (Exception e) {
-				c++;
-				if(c % 1000 == 1) {
-					cc++;
-					System.out.print(".");
-				}
-			}
-			if(cc > 50) {
-				server.printDebug("CONNECTION TO SOCKET TIMED OUT (localhost:" 
-						+ server.prefs.getGnuBgPort() + ")");
-				break;
-			}
-		}*/
 	}	
 	
 	public void terminate() {

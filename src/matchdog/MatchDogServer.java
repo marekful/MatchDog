@@ -29,6 +29,7 @@ public class MatchDogServer {
 	int defaultplayer;
 	int currentplayer;
 	Map<Integer, PlayerPrefs> players;
+	boolean listenLocal = true;
 	
 	public static void main(String [] args) {
 		new MatchDogServer(args);
@@ -170,7 +171,7 @@ public class MatchDogServer {
 				"GammonBot_II", 1,
 				"GammonBot_VIII", 1,
 				
-				4537, 55222
+				4537, 55272
 		};		
 		players.put(2, new PlayerPrefs(prefs));
 		prefs = new Object [] {
@@ -259,15 +260,22 @@ public class MatchDogServer {
 			if(currentplayer > players.size() - 1) {
 				currentplayer = defaultplayer;
 			}
+			
+			if(args.length > 1) {
+				try {
+					listenLocal = Integer.parseInt(args[1]) != 0;
+				} catch (NumberFormatException e) {
+					listenLocal = true;
+				}
+			}
 		}		
 		
-		MatchDog g = new MatchDog(players.get(currentplayer), globalblacklist);
+		MatchDog g = new MatchDog(players.get(currentplayer), globalblacklist, listenLocal);
 		g.start();
 		
 		if(g.prefs.getListenerPort() > 0) {
 			startServer(g);
 		}
-
 	}
 	
 	private synchronized void startServer(MatchDog g) {
@@ -277,14 +285,17 @@ public class MatchDogServer {
 		OutputStream ssouts;
 		PrintWriter ssout;
 		BufferedReader ssin;
-		try {
+		
+		int listenerPort = g.prefs.getListenerPort();
 			
-			ss = new ServerSocket(g.prefs.getListenerPort());
-			
-			while(true) {
-				g.printDebug(">>> waiting for connection on port " + g.prefs.getListenerPort());
+		while(true) {
+			try {
+				ss = new ServerSocket(listenerPort);
+				
+				g.printDebug(">>> waiting for connection on port " + listenerPort);
 				sss = ss.accept();
-				g.printDebug(">>> connection from " + sss.getLocalSocketAddress()	);
+				g.printDebug(">>> connection from " + sss.getRemoteSocketAddress()	);
+				System.out.println("Listening on port " + listenerPort);
 				
 				PrintWriter _p = new PrintWriter(sss.getOutputStream());
 				_p.print("Hello");
@@ -292,10 +303,13 @@ public class MatchDogServer {
 				_p.flush();
 				
 				g.listen(sss.getInputStream(), sss.getOutputStream());
+			
+			} catch(BindException e) {
+				listenerPort++;
+			} catch(Exception e) {
+				e.printStackTrace();
+				break;
 			}
-
-		} catch(Exception e) {
-			e.printStackTrace();
 		}
 		g.printDebug(">>> listener stopped ");
 		//g.setScanner(System.in);

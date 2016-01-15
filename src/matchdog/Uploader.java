@@ -42,7 +42,7 @@ public class Uploader extends Thread {
 			server.printDebug("Exiting Uploader thread");
 			dead = true;
 		} catch (Exception err) {
-			System.out.println("Uploader(run): " + err);
+			server.println("Uploader(run): " + err);
 			err.printStackTrace();
 		}
 	}

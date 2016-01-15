@@ -61,11 +61,7 @@ public class BGRunner extends Thread {
 					//}
 				}
 				
-				System.out.println();
-				console.setForegroundColor(ConsoleForegroundColor.WHITE);
-				console.setBackgroundColor(ConsoleBackgroundColor.DARK_BLUE);
-				System.out.print("gnubg: " + UnixConsole.RESET);
-				System.out.print(line);
+				printOutput(line);
 				//outbuffer.put(outbuffer.size(), line);
 				
 				//init = true;
@@ -73,12 +69,22 @@ public class BGRunner extends Thread {
 			}
 			input.close();
 		} catch (Exception err) {
-			System.out.println("BGRunner(run): " + err);
+			server.printDebug("BGRunner(run): " + err);
 			//err.printStackTrace();
 		}
 
 		server.printDebug("Exiting BGRunner thread");
 		dead = true;
+	}
+	
+	private void printOutput(String str) {
+		for(PrintStream os : server.listeners.values()) {
+			os.println();
+			console.setForegroundColor(ConsoleForegroundColor.WHITE);
+			console.setBackgroundColor(ConsoleBackgroundColor.DARK_BLUE);
+			os.print("gnubg:" + UnixConsole.RESET + " ");
+			os.print(str);
+		}
 	}
 
 	public void terminate() {

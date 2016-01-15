@@ -228,15 +228,15 @@ public class FibsRunner extends Thread {
 			terminate();
 		}
 		catch (SocketException e) {
-			System.out.println("Fibs connection closed - " + getName());
+			server.println("Fibs connection closed - " + getName());
 			
 			if(terminating == false) {
-				System.out.println("Fibs connection closed - RESTARTING FIBS - " + getName());
+				server.println("Fibs connection closed - RESTARTING FIBS - " + getName());
 				restart();
 			}
 		}
 		catch (Exception err) {
-			System.out.println("FibsRunner(run): " + err +  " - " + getName());
+			server.println("FibsRunner(run): " + err +  " - " + getName());
 			err.printStackTrace();
 		}
 	}
@@ -352,7 +352,6 @@ public class FibsRunner extends Thread {
 		//// LOGIN
 		//("FibsRunner.processInput> >>> inithelper: " + inithelper + " init: " + init);
 		if (inithelper > 0 && !init) {
-			System.out.println();
 	
 			init = true;
 			synchronized (server) {
@@ -1044,7 +1043,7 @@ public class FibsRunner extends Thread {
 				// server.gnubgout.println("set dice " + d1 + " " + d2);
 
 			} catch (NumberFormatException e) {
-				System.out.println("FibsRunner(processGamePlay): " + e);
+				server.println("FibsRunner(processGamePlay): " + e);
 			}
 			//match.stat.newGame(d1, d2);
 
@@ -1750,7 +1749,7 @@ public class FibsRunner extends Thread {
 			getOwnRating();
 			getOppRating();
 		} catch (NumberFormatException e) {
-			System.out.println(this.getClass().toString() + "(startMatch): " + e);
+			server.println(this.getClass().toString() + "(startMatch): " + e);
 		}
 	
 	}
@@ -2024,8 +2023,8 @@ public class FibsRunner extends Thread {
 			os.println();
 			console.setForegroundColor(ConsoleForegroundColor.WHITE);
 			console.setBackgroundColor(ConsoleBackgroundColor.DARK_GREEN);
-			os.print("fibs[" + server.getFibsmode() + "]: "
-					+ UnixConsole.RESET);
+			os.print("fibs[" + server.getFibsmode() + "]:"
+					+ UnixConsole.RESET + " ");
 			os.print(str);
 			os.flush();
 		}
