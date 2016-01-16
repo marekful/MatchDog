@@ -13,19 +13,14 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.Collection;
 import java.io.*;
 
-import jcons.src.com.meyling.console.Console;
-import jcons.src.com.meyling.console.ConsoleBackgroundColor;
-import jcons.src.com.meyling.console.ConsoleFactory;
-import jcons.src.com.meyling.console.ConsoleForegroundColor;
 import jcons.src.com.meyling.console.UnixConsole;
 
 import etc.TorExitNodeChecker;
 
-public class MatchDog extends Thread  {
-	
-	static Console console = ConsoleFactory.getConsole();
+public class MatchDog extends Thread implements PrintableStreamSource {
 	
 	protected static final String PROMPT = "? ";
 
@@ -59,6 +54,9 @@ public class MatchDog extends Thread  {
 	
 	protected int fibsmode;
 	
+	DebugPrinter printer;
+	DebugPrinter systemPrinter;
+	
 	MatchDog(PlayerPrefs prefs, HashMap<Integer, String> bl, boolean listenLocal) {
 		
 		this.prefs = prefs;
@@ -75,8 +73,7 @@ public class MatchDog extends Thread  {
 		
 		lastopp = null;
 		lastfinish = null;
-		
-		console = ConsoleFactory.getConsole();
+
 		fibsmode = 0;
 		fibsCount = 0;
 		
@@ -89,6 +86,12 @@ public class MatchDog extends Thread  {
 		// global blacklist
 		this.bl = bl;
 		
+		printer = new DebugPrinter(
+			this, "MatchDog:", UnixConsole.BLACK, UnixConsole.BACKGROUND_WHITE
+		);
+		systemPrinter = new DebugPrinter(
+			this, "system:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_RED
+		);
 	}
 	
 	public void run() {
@@ -101,7 +104,7 @@ public class MatchDog extends Thread  {
 		
 		try {
 			if(prefs.getGnuBgPort() == 0) {
-				print("NOT starting gnubg");
+				systemPrinter.printDebugln("NOT starting gnubg");
 				setFibsmode(3);
 			} else {
 
@@ -120,7 +123,7 @@ public class MatchDog extends Thread  {
 			
 
 		} catch (Exception e) {
-			println(this.getClass().toString() 
+			systemPrinter.printDebugln(this.getClass().toString() 
 									+ "(runServer): " + e);
 			e.printStackTrace();
 		}
@@ -157,7 +160,7 @@ public class MatchDog extends Thread  {
 			}
 			
 			if(contd) {
-				print(PROMPT, output);
+				systemPrinter.printDebug(PROMPT, output);
 			}
 			
 			
@@ -325,12 +328,12 @@ public class MatchDog extends Thread  {
 	}
 
 	private synchronized void initFibs() {
-		println("Initialising fibs");
+		systemPrinter.printDebugln("Initialising fibs");
 		fibs = new FibsRunner(this, getFibsHost(), getFibsPort(), fibsCount);
 		
 		fibs.start();				
 
-		println("Connecting to fibs ");
+		systemPrinter.printDebugln("Connecting to fibs ");
 		
 		try {
 			while(!fibs.init) { // init is 
@@ -370,11 +373,11 @@ public class MatchDog extends Thread  {
 
 	protected synchronized void initGnuBg() {
 
-		println("Initialising gnubg");
+		systemPrinter.printDebugln("Initialising gnubg");
 		gnubg = new BGRunner(getGnuBgCmd(), this, prefs.getGnuBgPort());
 		gnubg.start();	
 		
-		println("Waiting for gnubg ");
+		systemPrinter.printDebugln("Waiting for gnubg ");
 		try {
 			while(!gnubg.init) {
 				this.wait();
@@ -382,7 +385,7 @@ public class MatchDog extends Thread  {
 		} catch(InterruptedException e) {
 			e.printStackTrace();
 		}
-		println("gnubg running");
+		systemPrinter.printDebugln("gnubg running");
 
 		gnubgos = gnubg.p.getOutputStream();	
 		gnubgout = new PrintWriter(gnubgos, true);
@@ -417,9 +420,9 @@ public class MatchDog extends Thread  {
 	}
 	
 	protected void initBgSocket() {
-		println("Initialising bg socket");
+		systemPrinter.printDebugln("Initialising bg socket");
 		bgsocket = new BGSocket(this);
-		println("Connecting bg socket");
+		systemPrinter.printDebugln("Connecting bg socket");
 		bgsocket.connect();
 		bgsocket.start();
 	}
@@ -440,7 +443,7 @@ public class MatchDog extends Thread  {
 	
 	protected void resendLastBoard() {
 		fibsout.println("b");
-		printDebug("lastboard: " + fibs.lastboard);
+		printDebug("Resending last board: " + fibs.lastboard);
 		fibs.sleepFibs(600);
 		bgsocket.out.printf("%s", fibs.lastboard.trim() + "\r\n");
 	}
@@ -509,13 +512,12 @@ public class MatchDog extends Thread  {
 		keepalivetimer.schedule(keepalivetimertask, 48000L, 28000L);
 	}
 	
-	protected void print(String msg, PrintStream os) {
-		console.setForegroundColor(ConsoleForegroundColor.WHITE);
-		console.setBackgroundColor(ConsoleBackgroundColor.DARK_RED);
+	/*protected void print(String msg, PrintStream os) {
+		os.print(UnixConsole.LIGHT_WHITE);
+		os.print(UnixConsole.BACKGROUND_RED);
 		os.print("system:" + UnixConsole.RESET + " ");				
 		os.print(msg);
 		os.flush();
-		
 	}
 	
 	protected void print(String msg) {
@@ -524,37 +526,23 @@ public class MatchDog extends Thread  {
 		}
 	}
 	
-	
 	protected void println(String msg, PrintStream os) {
 		os.println();
-		console.setForegroundColor(ConsoleForegroundColor.WHITE);
-		console.setBackgroundColor(ConsoleBackgroundColor.DARK_RED);
-		os.print("system:" + UnixConsole.RESET + " ");				
-		os.print(msg);
-		os.flush();
+		print(msg, os);
 	}
 	
 	protected void println(String msg) {
 		for(PrintStream os : listeners.values()) {
 			println(msg, os);
 		}
-	}
-	
+	}*/
 	
 	protected void printDebug(String str) {
-		for(PrintStream os : listeners.values()) {
-			os.println();
-			int c = 0;
-			if(fibs != null) {
-				c = fibs.procGPcounter;
-			}
-			console.setForegroundColor(ConsoleForegroundColor.BLACK);
-			console.setBackgroundColor(ConsoleBackgroundColor.GREY);
-			os.print("MatchDog[" + c + "]:" + UnixConsole.RESET + " ");
-			os.print( str + UnixConsole.RESET);
-			os.flush();
+		int c = 0;
+		if(fibs != null) {
+			c = fibs.procGPcounter;
 		}
-		
+		printer.printDebugln(str, "MatchDog[" + c + "]");
 	}
 	
 	public boolean openPlayerStats(String path) {
@@ -661,6 +649,10 @@ public class MatchDog extends Thread  {
 	
 	public boolean isBlacklisted(String name) {
 		return bl.containsValue(name);
+	}
+	
+	public Collection<PrintStream> getPrintStreams() {
+		return listeners.values();
 	}
 
 }

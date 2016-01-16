@@ -3,6 +3,7 @@ package matchdog;
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
+import jcons.src.com.meyling.console.UnixConsole;
 
 public class BGSocket extends Thread  {
 	InetAddress sa = null;
@@ -12,6 +13,7 @@ public class BGSocket extends Thread  {
 	BufferedReader in;
 	PrintWriter out;
 	MatchDog server;
+	DebugPrinter printer;
 	boolean busy, run, connected, dead, evalcmd, wMonitor;
 
 	long sockettime, replytime;
@@ -27,6 +29,9 @@ public class BGSocket extends Thread  {
 		dead = false;
 		evalcmd = false;
 		setName("BGSocket");
+		printer = new DebugPrinter(
+			server, "gnubgexternal:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_BLUE
+		);
 	}
 
 	@Override
@@ -58,6 +63,47 @@ public class BGSocket extends Thread  {
 		server.printDebug("Exiting BGSocket thread");
 		dead = true;
 	}
+	
+
+	/*private void printDebug(String msg, PrintStream os) {
+		printDebug(msg, os, getDebugLabel());
+	}
+	
+	private void printDebug(String msg) {
+		for(PrintStream os : server.listeners.values()) {
+			printDebug(msg, os);
+		}
+	}
+	
+	protected void printDebugln(String msg, PrintStream os) {
+		os.println();
+		printDebug(msg, os);
+	}
+	
+	protected void printDebugln(String msg) {
+		for(PrintStream os : server.listeners.values()) {
+			printDebugln(msg, os);
+		}
+	}
+	
+	protected void printDebug(String msg, PrintStream os, String label) {
+		os.print(UnixConsole.BLACK);
+		os.print(UnixConsole.BACKGROUND_WHITE);
+		os.print(label);
+		os.print(UnixConsole.RESET + " ");
+		os.print(msg);
+		os.flush();
+	}
+	
+	protected void printDebug(String msg, String label) {
+		for(PrintStream os : server.listeners.values()) {
+			printDebug(msg, os, label);
+		}
+	}
+	
+	private String getDebugLabel() {
+		return "gnubgextrnal:";
+	}*/
 
 	public synchronized void println(String lineIn) {
 
@@ -66,29 +112,29 @@ public class BGSocket extends Thread  {
 			// This is actually not a bug: can be caused by a 'kibitz move'
 			// during gameplay or by the stamptimer.
 			// Could be handled better.
-			server.printDebug("*** !! *** NOT SENDING new line to socket");
+			printer.printDebugln("*** !! *** NOT SENDING new line to socket");
 			return;
 		}
 		busy = true;
 		
 		if(lineIn.trim().equals("")) {
-			server.printDebug("*** !! *** NOT SENDING empty line");
+			printer.printDebugln("*** !! *** NOT SENDING empty line");
 			return;
 		}
 		
 		if(isEvalcmd()) {
 			
-			server.printDebug("bgsocket: sending EVALUATION CMD to gnubg... ");	
+			printer.printDebugln("sending EVALUATION CMD... ");	
 		} else {
-			server.printDebug("bgsocket: sending BOARD STATE to gnubg... ");	
+			printer.printDebugln("sending BOARD STATE... ");	
 		}
 		
 		sockettime = System.nanoTime();
 		out.printf("%s", lineIn.trim() + "\r\n");
 
-		System.out.print("(" + ((System.nanoTime() - sockettime) / 1000000.0) + " ms) OK, waiting for reply");
+		printer.printDebug("(" + ((System.nanoTime() - sockettime) / 1000000.0) + " ms) OK, waiting for reply", "");
 		replytime = System.nanoTime();
-	}	
+	}
 	
 	synchronized void processReply() {
 
@@ -104,7 +150,7 @@ public class BGSocket extends Thread  {
 		
 		if(isEvalcmd()) {
 
-			server.printDebug("bgsocket: gnubg EQUITIES (in " 
+			printer.printDebugln("gnubg EQUITIES (in " 
 					+ replydiff + unit 
 					+ "): " + line);
 			
@@ -120,7 +166,7 @@ public class BGSocket extends Thread  {
 			busy = false;
 			return;
 		} else {
-			server.printDebug("bgsocket: gnubg says (in "
+			printer.printDebugln("gnubg says (in "
 					+ replydiff + unit 
 					+ "): " + line);
 		}
@@ -143,9 +189,9 @@ public class BGSocket extends Thread  {
 			}
 			server.fibs.sleepFibs(100);
 			server.fibsout.println(fibscommand);
-			server.printDebug("bgsocket: sent2fibs: ");
+			printer.printDebugln("sent to fibs: ");
 			server.fibs.printFibsCommand(fibscommand);
-			server.printDebug("");
+			printer.printDebugln("");
 			server.fibs.printMatchInfo();
 				
 		}
@@ -160,7 +206,7 @@ public class BGSocket extends Thread  {
 		// and a board: which results in a 'roll' or other
 		// non expected reply is sent from gnubg.
 		if(in.startsWith("roll") || in.startsWith("double") || in.contains("/") || in.equals("")) {
-			server.printDebug("*** !! BUG parseEquities: " + in);
+			printer.printDebugln("*** !! BUG parseEquities: " + in);
 			/*server.fibs.match.equities[0] = .5;
 			server.fibs.match.equities[1] = .5;
 			server.fibs.match.equities[2] = .5;
@@ -221,7 +267,7 @@ public class BGSocket extends Thread  {
 				sa = InetAddress.getByName("localhost");
 				s = new Socket(sa, server.prefs.getGnuBgPort());
 				if(s.isConnected()) {
-					server.println("Successfully connected to bg socket");
+					server.systemPrinter.printDebugln("Successfully connected to bg socket");
 					connected = true;					
 				}
 				sin = s.getInputStream();
@@ -232,7 +278,7 @@ public class BGSocket extends Thread  {
 			} catch(InterruptedException e) {
 				return;
 			} catch(Exception e) {
-				server.println("Exception in BGSocket.connect(): " + e.getMessage());
+				server.systemPrinter.printDebugln("Exception in BGSocket.connect(): " + e.getMessage() + ", retrying...");
 			}
 		}
 	}	

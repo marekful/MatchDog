@@ -144,7 +144,7 @@ public class Match {
 		} else if(isOppsTurn()) {
 			diff = now.getTime() - getOppstamp().getTime() - fibsDiff * 1000;
 			server.printDebug("(opp's diff is " + (diff / 1000) + "(" + fibsDiff + ") sec)");
-			if(diff > 90000 && callcounter < 2) {
+			if(diff > 60000 && callcounter < 2) {
 				
 				server.printDebug("asking opp's attention");
 				server.fibs.sleepFibs(150);
@@ -152,9 +152,10 @@ public class Match {
 				server.fibs.sleepFibs(250);
 				callcounter++;
 				
-			} else if(diff > 30000) {
+			} else if(diff > 60000 && callcounter < 3) {
 				server.resendLastBoard();
-			} else if(diff > 90000) {
+				callcounter++;
+			} else if(diff > 120000) {
 				server.printDebug("OPP IS INACTIVE for :" + diff / 1000 + " seconds, LEAVING");
 				server.fibsout.println("leave");
 			}

@@ -279,7 +279,7 @@ public class MatchDogServer {
 	}
 	
 	private synchronized void startServer(MatchDog g) {
-		ServerSocket ss;
+		ServerSocket ss = null;
 		Socket sss;
 		InputStream ssins;
 		OutputStream ssouts;
@@ -287,15 +287,32 @@ public class MatchDogServer {
 		BufferedReader ssin;
 		
 		int listenerPort = g.prefs.getListenerPort();
-			
+		
 		while(true) {
 			try {
 				ss = new ServerSocket(listenerPort);
-				
-				g.printDebug(">>> waiting for connection on port " + listenerPort);
+				g.systemPrinter.printDebugln(">>> Waiting for connection on port " + listenerPort);
+				System.out.println("Listening on port " + listenerPort); // print to stdout in case we started in background with listenLocal=0
+				break;
+			} catch(BindException e) {
+				listenerPort++;
+				continue;
+			} catch(Exception e) {
+				g.systemPrinter.printDebugln(">>> Exception creating socket: " + e.getMessage());
+				e.printStackTrace();
+				break;
+			}
+		}
+		
+		if(ss == null) {
+			g.systemPrinter.printDebugln(">>> Couldn't create socket, exiting listener");
+			return;
+		}
+		
+		while(true) {
+			try {
 				sss = ss.accept();
-				g.printDebug(">>> connection from " + sss.getRemoteSocketAddress()	);
-				System.out.println("Listening on port " + listenerPort);
+				g.systemPrinter.printDebugln(">>> Connection from " + sss.getRemoteSocketAddress());
 				
 				PrintWriter _p = new PrintWriter(sss.getOutputStream());
 				_p.print("Hello");
@@ -303,15 +320,14 @@ public class MatchDogServer {
 				_p.flush();
 				
 				g.listen(sss.getInputStream(), sss.getOutputStream());
+				g.systemPrinter.printDebugln(">>> Connection on port " + listenerPort + " closed");
 			
-			} catch(BindException e) {
-				listenerPort++;
 			} catch(Exception e) {
 				e.printStackTrace();
 				break;
 			}
 		}
-		g.printDebug(">>> listener stopped ");
+		g.printDebug(">>> Listener stopped ");
 		//g.setScanner(System.in);
 	}
 }

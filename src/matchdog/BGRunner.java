@@ -15,6 +15,7 @@ public class BGRunner extends Thread {
 	Console console;
 	String command;
 	MatchDog server;
+	DebugPrinter printer;
 	String player0, player1;
 	String lastMoveStr;
 	int port;
@@ -35,6 +36,9 @@ public class BGRunner extends Thread {
 		setName("BGRunner");
 		dead = false;
 		this.port = port;
+		printer = new DebugPrinter(
+			server, "gnubg:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_BLUE
+		);
 	}
 
 	@Override
@@ -61,7 +65,7 @@ public class BGRunner extends Thread {
 					//}
 				}
 				
-				printOutput(line);
+				printer.printDebugln(line);
 				//outbuffer.put(outbuffer.size(), line);
 				
 				//init = true;
@@ -75,16 +79,6 @@ public class BGRunner extends Thread {
 
 		server.printDebug("Exiting BGRunner thread");
 		dead = true;
-	}
-	
-	private void printOutput(String str) {
-		for(PrintStream os : server.listeners.values()) {
-			os.println();
-			console.setForegroundColor(ConsoleForegroundColor.WHITE);
-			console.setBackgroundColor(ConsoleBackgroundColor.DARK_BLUE);
-			os.print("gnubg:" + UnixConsole.RESET + " ");
-			os.print(str);
-		}
 	}
 
 	public void terminate() {
