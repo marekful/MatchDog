@@ -240,16 +240,18 @@ public class FibsRunner extends Thread {
 		}
 		catch (SocketException e) {
 			server.systemPrinter.printDebugln("Fibs connection closed - " + getName());
-			
-			if(terminating == false) {
-				server.systemPrinter.printDebugln("Fibs connection closed - RESTARTING FIBS - " + getName());
-				restart();
-			}
 		}
 		catch (Exception err) {
 			server.systemPrinter.printDebugln("FibsRunner(run): " + err +  " - " + getName());
-			err.printStackTrace();
+            for(PrintStream ps : server.getPrintStreams()) {
+                err.printStackTrace(ps);
+            }
 		}
+        if(!terminating) {
+            server.systemPrinter.printDebugln("FibsRunner(run): *** RESTARING FIBS ***" + getName());
+            sleepFibs(1000);
+            restart();
+        }
 	}
 
 	private synchronized void processInput(String in) {

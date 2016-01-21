@@ -167,7 +167,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 			if(contd) {
                 systemPrinter.printDebug("Entering MatchDog Shell - to select output enter number", output, "");
                 systemPrinter.printDebugln("1: fibs 2: gnubg 6: gnubg-external | for other commands, see 'help' ", output, "");
-				systemPrinter.printDebugln("matchdog" + PROMPT, output, "");
+				systemPrinter.printDebugln(prefs.getName() + PROMPT, output, "");
 				fibs.printer.setSuspended(output, true);
 				systemPrinter.setSuspended(output, true);
 				printer.setSuspended(output, true);
