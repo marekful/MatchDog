@@ -13,7 +13,7 @@ public class BGSocket extends Thread  {
 	BufferedReader in;
 	PrintWriter out;
 	MatchDog server;
-	DebugPrinter printer;
+	BufferedDebugPrinter printer;
 	boolean busy, run, connected, dead, evalcmd, wMonitor;
 
 	long sockettime, replytime;
@@ -29,9 +29,10 @@ public class BGSocket extends Thread  {
 		dead = false;
 		evalcmd = false;
 		setName("BGSocket");
-		printer = new DebugPrinter(
-			server, "gnubgexternal:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_BLUE
+		printer = new BufferedDebugPrinter(
+			server, "gnubg-external:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_BLUE
 		);
+		printer.setBuff(server.outputBuffer);
 	}
 
 	@Override
@@ -157,7 +158,7 @@ public class BGSocket extends Thread  {
 			parseEquities(line);
 			setEvalcmd(false);
 
-			if(wMonitor == true) {
+			if(wMonitor) {
 				wMonitor = false;
 				synchronized (server.fibs) {
 					server.fibs.notify();

@@ -64,8 +64,10 @@ public class DebugPrinter {
 	}
 	
 	public void printDebug(String msg, PrintStream os, String label) {
-		os.print(getColor() + getBgColor() + label
-				+ DebugPrinter.RESET + " " + msg);
+		if(!label.equals("")) {
+			label = getColor() + getBgColor() + label + DebugPrinter.RESET + " ";
+		}
+		os.print(label + msg);
 		os.flush();
 	}
 	

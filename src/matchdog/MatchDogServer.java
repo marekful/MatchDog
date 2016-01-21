@@ -143,20 +143,20 @@ public class MatchDogServer {
 		players.put(1, new PlayerPrefs(prefs));
 		prefs = new Object [] {
 				"MatchDogMini", "piko",
-				true, true, true,
+				true, false, true,
 				true, true, 1,
 				1, -16000,
 				3, 3, 0.000,
 				
-				1,  0,   0,  24, 0.44,		// movefileters (x 10x5)
-				2,  0,   0,  24, 0.32,		
+				1,  0,   0,  20, 0.32,		// movefileters (x 10x5)
+				2,  0,   0,  20, 0.32,		
 				2,  1,  -1,  0,  0.0,
-				3,  0,   0,  24,  0.32,
+				3,  0,   0,  20,  0.32,
 				3,  1,  -0,  4, 0.08,
-				3,  2,   0,  8, 0.11,
+				3,  2,   0,  6, 0.08,
 				4,  0,   0,  20, 0.32,
 				4,  1,  -1,  0, 0,
-				4,  2,   0,  8, 0.11,
+				4,  2,   0,  6, 0.08,
 				4,  3,  -1,  0, 0,					
 				
 				"MonteCarlo", 1,
@@ -211,19 +211,19 @@ public class MatchDogServer {
 		prefs = new Object [] {
 				"MatchDog", "malako",
 				true, false, true,
-				false, false, 15,
+				true, false, 15,
 				100, -22000,
 				3, 3, 0.0,			
 				
-				1,  0,   0,  24, 0.44,		// movefileters (x 10x5)
-				2,  0,   0,  24, 0.32,		
+				1,  0,   0,  20, 0.32,		// movefileters (x 10x5)
+				2,  0,   0,  20, 0.32,		
 				2,  1,  -1,  0,  0.0,
-				3,  0,   0,  24,  0.32,
+				3,  0,   0,  20,  0.32,
 				3,  1,  -0,  4, 0.08,
-				3,  2,   0,  8, 0.11,
+				3,  2,   0,  6, 0.08,
 				4,  0,   0,  20, 0.32,
 				4,  1,  -1,  0, 0,
-				4,  2,   0,  8, 0.11,
+				4,  2,   0,  6, 0.08,
 				4,  3,  -1,  0, 0,	
 				
 				"GammonBot_XVIII", 11,
@@ -319,7 +319,7 @@ public class MatchDogServer {
 				_p.println();
 				_p.flush();
 				
-				g.listen(sss.getInputStream(), sss.getOutputStream());
+				g.listen(sss.getInputStream(), new PrintStream(sss.getOutputStream()));
 				g.systemPrinter.printDebugln(">>> Connection on port " + listenerPort + " closed");
 			
 			} catch(Exception e) {

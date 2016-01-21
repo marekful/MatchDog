@@ -11,11 +11,9 @@ public class BGRunner extends Thread {
 	
 	Process p;
 	boolean init, isExternal, run, dead;
-	//HashMap<Integer, String> outbuffer;
-	Console console;
 	String command;
 	MatchDog server;
-	DebugPrinter printer;
+	BufferedDebugPrinter printer;
 	String player0, player1;
 	String lastMoveStr;
 	int port;
@@ -26,8 +24,6 @@ public class BGRunner extends Thread {
 		p = null;
 		init = false;
 		isExternal = false;
-		//outbuffer = new HashMap<Integer, String>();
-		console = ConsoleFactory.getConsole();
 		this.command = command;
 		this.server = server;
 		//player0 = server.gnubgp0;
@@ -36,9 +32,10 @@ public class BGRunner extends Thread {
 		setName("BGRunner");
 		dead = false;
 		this.port = port;
-		printer = new DebugPrinter(
+		printer = new BufferedDebugPrinter(
 			server, "gnubg:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_BLUE
 		);
+		printer.setBuff(server.outputBuffer);
 	}
 
 	@Override

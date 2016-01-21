@@ -15,8 +15,6 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import etc.TorExitNodeChecker;
 
@@ -29,6 +27,7 @@ import jcons.src.com.meyling.console.UnixConsole;
 public class FibsRunner extends Thread {
 	
 	static final int timoutSeconds = 90;
+	static final String FIBSMSG_WAVES_GOODBYE = "waves goodbye";
 	
 	int id;
 
@@ -56,16 +55,16 @@ public class FibsRunner extends Thread {
 	int inithelper = 0;
 	String host;
 	int port;
-	int matchCount;
 	MatchDog server;
-	DebugPrinter printer;
-	DebugPrinter matchinfoPrinter;
+	BufferedFibsDebugPrinter printer; 
+	BufferedDebugPrinter matchinfoPrinter;
 	Match match, lastmatch;
 	String lastboard, filteredInput;
 	boolean processNextLine, terminating;
 	boolean getSavedMatches, gettingSaved, getOwnRating,
 	getOppRating, invitationInProgress;
 	Date terminatedAt;
+	Object lock;
 	
 	// Normally 'login()' will invoke 'getSavedMatches()' too but
 	// if that is not getting through to fibs the 'savedMatchs'
@@ -141,7 +140,6 @@ public class FibsRunner extends Thread {
 		waitLastBoard = false;
 		
 		procGPcounter = 0;
-		matchCount = 0;
 		
 		doubledInRound = 0;
 		
@@ -150,16 +148,22 @@ public class FibsRunner extends Thread {
 		} else {
 			torMonitorMode = false;
 		}
+
+		lock = new Object();
 		
 		//final String pid = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
 		setName("FibsRunner-" + this.id);
 		
-		printer = new FibsDebugPrinter(
+		printer = new BufferedFibsDebugPrinter(
 			server, "fibs:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_GREEN
 		);
-		matchinfoPrinter = new DebugPrinter(
-			server, "MatchInfo:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_YELLOW
+		
+		matchinfoPrinter = new BufferedDebugPrinter(
+			server, "MatchInfo:", UnixConsole.BLACK, UnixConsole.BACKGROUND_YELLOW
 		);
+
+        printer.setBuff(server.outputBuffer);
+        matchinfoPrinter.setBuff(server.outputBuffer);
 	}
 
 	@Override
@@ -311,7 +315,7 @@ public class FibsRunner extends Thread {
 		
 		// filter fibs output line for
 		if (	torMonitorMode
-			|| in.contains("waves goodbye")
+			|| in.contains(FibsRunner.FIBSMSG_WAVES_GOODBYE)
 			|| (in.contains("point match")
 				&& (   in.contains("wins a") 
 					|| in.contains("start a") 
@@ -672,10 +676,10 @@ public class FibsRunner extends Thread {
 			getRep = false;
 			canStart = true;
 		}  
-		else if(getRep) {
+		/*else if(getRep) {
 			server.fibsout.println("tell RepBotNG ask " + opp);
 			return;
-		}
+		}*/
 		if (canStart) {
 			canStart = false;
 			// if user has saved match don't join
@@ -1743,7 +1747,7 @@ public class FibsRunner extends Thread {
 	
 			int ml = Integer.parseInt(mlstr);
 			this.match = new Match(server, oppname, ml);
-			this.matchCount++;
+			server.matchCount++;
 			server.setFibsmode(2);
 	
 			//while (!server.bgsocket.run) {}
@@ -2164,9 +2168,9 @@ public class FibsRunner extends Thread {
 		}
 	}
 	
-	private void keepAlive() {
+	protected void keepAlive() {
 		sleepFibs(250);
-		server.fibsout.println("tell monitor keeping connection alive...");
+		server.fibsout.println("whois " + server.prefs.getName());
 	}
 	
 	protected long getFibsLastLineSecondsAgo() {

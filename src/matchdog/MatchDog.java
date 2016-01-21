@@ -7,13 +7,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Scanner;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.Collection;
+import java.util.*;
 import java.io.*;
 
 import jcons.src.com.meyling.console.UnixConsole;
@@ -22,7 +16,8 @@ import etc.TorExitNodeChecker;
 
 public class MatchDog extends Thread implements PrintableStreamSource {
 	
-	protected static final String PROMPT = "? ";
+	protected static final String PROMPT = "$ ";
+    static final Object lock = new Object();
 
 	BGRunner gnubg;
 	FibsRunner fibs;
@@ -36,7 +31,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 	Map<Integer, String> savedMatches;
 	String lastopp;
 	int replayTimeout = 90, // sec TODO move this to prefs
-		fibsCount; 
+		fibsCount, matchCount; 
 	Date serverStartedAt, lastfinish;
 	PlayerStats playerstats;
 	StatWriter statview;
@@ -51,11 +46,11 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 	Timer keepalivetimer;
 	TimerTask keepalivetimertask;
 	HashMap<Integer, PrintStream> listeners = new HashMap<Integer, PrintStream>();
+    ArrayList<String> outputBuffer;
 	
 	protected int fibsmode;
 	
-	DebugPrinter printer;
-	DebugPrinter systemPrinter;
+	BufferedDebugPrinter printer, systemPrinter;
 	
 	MatchDog(PlayerPrefs prefs, HashMap<Integer, String> bl, boolean listenLocal) {
 		
@@ -76,6 +71,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 
 		fibsmode = 0;
 		fibsCount = 0;
+		matchCount = 0;
 		
 		savedMatches = new HashMap<Integer, String>();
 		playerstats = null;
@@ -86,12 +82,15 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 		// global blacklist
 		this.bl = bl;
 		
-		printer = new DebugPrinter(
+		printer = new BufferedDebugPrinter(
 			this, "MatchDog:", UnixConsole.BLACK, UnixConsole.BACKGROUND_WHITE
 		);
-		systemPrinter = new DebugPrinter(
+		systemPrinter = new BufferedDebugPrinter(
 			this, "system:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_RED
 		);
+        outputBuffer = new ArrayList<String>();
+        printer.setBuff(outputBuffer);
+        systemPrinter.setBuff(outputBuffer);
 	}
 	
 	public void run() {
@@ -128,54 +127,76 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 			e.printStackTrace();
 		}
 		
-		if(listenLocal == true) {
+		if(listenLocal) {
 			listen(System.in, System.out);
 		}
 	}
 	
 	
-	public void listen(InputStream in, OutputStream out) {
+	public void listen(InputStream in, PrintStream out) {
 		
 		boolean exit = true;
 		int listenerId = listeners.size();
 		
 		
 		contd = false;
-		//Scanner scanner = new java.util.Scanner(System.in);
 		BufferedReader input = new BufferedReader(new InputStreamReader(in));
-		//PrintWriter output = new PrintWriter(out);
-		PrintStream output = new PrintStream(out);
-		if(out.equals(System.out) == false) {
+		PrintStream output = out;
+
+		
+		if(!out.equals(System.out)) {
 			listeners.put(listenerId, output);
 		}
 		String line = "";
 		for(;;) {
 			
+			fibs.printer.setSuspended(output, false);
+			systemPrinter.setSuspended(output, false);
+			printer.setSuspended(output, false);
+            bgsocket.printer.setSuspended(output, false);
+            fibs.matchinfoPrinter.setSuspended(output, false);
+
 			if(line.equals("exit")) 
 				break;
 			
-			if(line.equals("close") && in.equals(System.in) == false) {
+			if(line.equals("close") && !in.equals(System.in)) {
 				exit = false;
 				break;
 			}
 			
 			if(contd) {
-				systemPrinter.printDebug(PROMPT, output);
+                systemPrinter.printDebug("Entering MatchDog Shell - to select output enter number", output, "");
+                systemPrinter.printDebugln("1: fibs 2: gnubg 6: gnubg-external | for other commands, see 'help' ", output, "");
+				systemPrinter.printDebugln("matchdog" + PROMPT, output, "");
+				fibs.printer.setSuspended(output, true);
+				systemPrinter.setSuspended(output, true);
+				printer.setSuspended(output, true);
+                bgsocket.printer.setSuspended(output, true);
+                fibs.matchinfoPrinter.setSuspended(output, true);
 			}
-			
-			
-			///line = scanner.nextLine();
+
 			try {
 				line = input.readLine();
 			} catch(IOException e) {
 				exit = false;
 				break;
 			}
-			if(line == null) {
+
+            if(line != null && !contd) {
+                contd = true;
+                continue;
+            }
+
+            if(line == null) {
 				exit = false;
 				break;
 			}
-			contd = true;
+            contd = false;
+
+            if(line.equals("")) {
+                systemPrinter.printDebug("Leaving MatchDog Shell", output, "");
+                continue;
+            }
 
 			if(line.equals("2")) {
 				writer = gnubgout;
@@ -191,8 +212,6 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 					bgsocket.out.printf("%s", fibs.lastboard.trim() + "\r\n");
 				}
 				continue;
-			} else if(line.trim().equals("")) { 
-				continue;
 			}  else if(line.equals("16")) {
 				statview.dumpPlayerStats("", 0);
 				continue;
@@ -203,7 +222,6 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 				String host = line.split(" ")[1];
 				printDebug("TOR CHECHK [" + host + "] result: " 
 						+ TorExitNodeChecker.isTorExitNode(host));
-				;
 				continue;
 			}  else if(line.equals("166")) {
 				removePlayerStat("marekful");
@@ -221,10 +239,11 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 					statview.dumpPlayerStats(line.split(" ")[1], 3);
 				continue;
 			}  else if(line.equals("111")) {
-				output.println(prefs.showPrefs());
+				output.print(prefs.showPrefs());
 				continue;
 			}  else if(line.equals("88")) {
 				resendLastBoard();
+                continue;
 			} else if(line.equals("31")) {
 				prefs.setAutoinvite( (prefs.isAutoinvite()) ? false : true );
 				printDebug("autoinvite is now: " + prefs.isAutoinvite());
@@ -268,15 +287,15 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 				restartFibs();
 				continue;
 			} else if(line.equals("uptime")) {
-				output.println(serverStartedAt);
+				output.print(serverStartedAt);
 				continue;
 			} else if(line.equals("stat")) {
-				output.println("started at " + serverStartedAt + " match# " 
-									+ fibs.matchCount + " fibs# " + fibsCount 
+				output.print("started at " + serverStartedAt + " match# "
+									+ matchCount + " fibs# " + fibsCount 
 									+ " GPc# " + fibs.procGPcounter);
 				continue;
 			} else if (line.equals("19")) {
-				output.println(prefs.getPreferredOpps().toString());
+				output.print(prefs.getPreferredOpps().toString());
 				
 				continue;
 			} else {
@@ -304,7 +323,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 			}
 		}
 		
-		if(exit == true) {
+		if(exit) {
 			stopInviter();
 			stopBgSocket();
 			stopGnubg();
@@ -322,7 +341,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 			output.println();
 			System.exit(0);
 		}
-		if(out.equals(System.out) == false) {
+		if(!out.equals(System.out)) {
 			listeners.remove(listenerId);
 		}
 	}
@@ -342,9 +361,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 			fibsCount++;
 			fibsos = fibs.s.getOutputStream();	
 			
-		} catch(InterruptedException e) {
-			e.printStackTrace();
-		} catch(IOException e) {
+		} catch(Exception e) {
 			e.printStackTrace();
 		}
 		fibsout = new PrintWriter(fibsos, true);
@@ -488,28 +505,50 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 		keepalivetimer = new Timer();
 		keepalivetimertask = new TimerTask() {
 			
+			Date firstRun = null;
+			
 			@Override 
 			public void run() {
 				
-				printDebug("KeepAlive");
-				printDebug("KeepAlive(" + keepalivetimer.hashCode() + ") " 
-						+ fibs.s.isInputShutdown() + " - " + fibs.s.isOutputShutdown() + " - "
-						+ fibs.terminating + " | last fibsline: " + fibs.getFibsLastLineSecondsAgo() + " sec");
-				
-				if(fibs.terminating == true) {
-					return;
+				if(firstRun == null) {
+					firstRun = new Date();
 				}
 				
-				// fibs.input.ensureOpen()
-				
-				if(fibs.getFibsLastLineSecondsAgo() > FibsRunner.timoutSeconds && fibs.init == true) {
-					printDebug(" *** No line from fibs for " + FibsRunner.timoutSeconds + " seconds, RESTARTING ***");
-					restartFibs();
+				try {
+					printDebug("KeepAlive");
+					printDebug("KeepAlive(" + keepalivetimer.hashCode() + ") " 
+							+ fibs.s.isInputShutdown() + " - " + fibs.s.isOutputShutdown() + " - "
+							+ fibs.terminating + " | last fibsline: " + fibs.getFibsLastLineSecondsAgo() + " sec"
+							+ " | started: " + ((new Date()).getTime() - firstRun.getTime()) / 1000 + " sec ago");
+					
+					if(fibs.terminating == true) {
+						return;
+					}
+					
+					if(fibs.getFibsLastLineSecondsAgo() > FibsRunner.timoutSeconds && fibs.init == true) {
+						printDebug(" *** No line from fibs for " + FibsRunner.timoutSeconds + " seconds, RESTARTING ***");
+						restartFibs();
+					}
+				} catch(NullPointerException e) {
+					printDebug("KeepAlive - NullPointerException, probably fibs is restarting");
+				} catch(Exception e) {
+					printDebug("KeepAlive - Exception: " + e.getMessage());
 				}
 				
 			}
 		};	
 		keepalivetimer.schedule(keepalivetimertask, 48000L, 28000L);
+		
+		keepalivetimer.schedule(new TimerTask() {
+			
+			Date firstRun = null;
+			
+			@Override 
+			public void run() {
+				printDebug("KeepAlive+");
+				fibsout.println("whois " + prefs.getName());
+			} 
+		}, 300000, 300000);
 	}
 	
 	/*protected void print(String msg, PrintStream os) {
@@ -542,7 +581,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 		if(fibs != null) {
 			c = fibs.procGPcounter;
 		}
-		printer.printDebugln(str, "MatchDog[" + c + "]");
+		printer.printDebugln(str, "MatchDog[" + c + "]:");
 	}
 	
 	public boolean openPlayerStats(String path) {
