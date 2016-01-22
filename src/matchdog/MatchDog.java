@@ -9,6 +9,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.*;
 import java.io.*;
+import java.net.InetAddress;
 
 import jcons.src.com.meyling.console.UnixConsole;
 
@@ -37,7 +38,9 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 	StatWriter statview;
 	String pstatspath;
 	String outputName;
-	double ownRating;
+    String hostName;
+
+    double ownRating;
 	boolean contd, listenLocal;
 	
 	HashMap<Integer, String> bl = new HashMap<Integer, String>();
@@ -52,10 +55,11 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 	
 	BufferedDebugPrinter printer, systemPrinter;
 	
-	MatchDog(PlayerPrefs prefs, HashMap<Integer, String> bl, boolean listenLocal) {
+	MatchDog(PlayerPrefs prefs, HashMap<Integer, String> bl, String hostName, boolean listenLocal) {
 		
 		this.prefs = prefs;
 		this.listenLocal = listenLocal;
+        this.hostName = hostName;
 		
 		gnubg = null;
 		fibs = null;
@@ -131,7 +135,10 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 			listen(System.in, System.out);
 		}
 	}
-	
+
+    private String getPrompt() {
+        return prefs.getName() + "@" + hostName + PROMPT;
+    }
 	
 	public void listen(InputStream in, PrintStream out) {
 		
@@ -167,13 +174,15 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 			if(contd) {
                 systemPrinter.printDebug("Entering MatchDog Shell - to select output enter number", output, "");
                 systemPrinter.printDebugln("1: fibs 2: gnubg 6: gnubg-external | for other commands, see 'help' ", output, "");
-				systemPrinter.printDebugln(prefs.getName() + PROMPT, output, "");
+				systemPrinter.printDebugln(getPrompt(), output, "");
 				fibs.printer.setSuspended(output, true);
 				systemPrinter.setSuspended(output, true);
 				printer.setSuspended(output, true);
                 bgsocket.printer.setSuspended(output, true);
                 fibs.matchinfoPrinter.setSuspended(output, true);
-			}
+			} else {
+                systemPrinter.printDebug("Leaving MatchDog Shell", output, "");
+            }
 
 			try {
 				line = input.readLine();
@@ -194,7 +203,6 @@ public class MatchDog extends Thread implements PrintableStreamSource {
             contd = false;
 
             if(line.equals("")) {
-                systemPrinter.printDebug("Leaving MatchDog Shell", output, "");
                 continue;
             }
 
@@ -292,13 +300,14 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 			} else if(line.equals("stat")) {
 				output.print("started at " + serverStartedAt + " match# "
 									+ matchCount + " fibs# " + fibsCount 
-									+ " GPc# " + fibs.procGPcounter);
+									+ " pGP# " + fibs.procGPcounter);
 				continue;
 			} else if (line.equals("19")) {
 				output.print(prefs.getPreferredOpps().toString());
 				
 				continue;
 			} else {
+                output.print(getPrompt() + "Unknown command: " + line);
 				continue;
 			}
 		

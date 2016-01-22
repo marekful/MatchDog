@@ -270,7 +270,12 @@ public class MatchDogServer {
 			}
 		}		
 		
-		MatchDog g = new MatchDog(players.get(currentplayer), globalblacklist, listenLocal);
+		MatchDog g = new MatchDog(
+			players.get(currentplayer),
+			globalblacklist,
+			getLocalHostname(),
+			listenLocal
+		);
 		g.start();
 		
 		if(g.prefs.getListenerPort() > 0) {
@@ -296,7 +301,6 @@ public class MatchDogServer {
 				break;
 			} catch(BindException e) {
 				listenerPort++;
-				continue;
 			} catch(Exception e) {
 				g.systemPrinter.printDebugln(">>> Exception creating socket: " + e.getMessage());
 				e.printStackTrace();
@@ -330,4 +334,23 @@ public class MatchDogServer {
 		g.printDebug(">>> Listener stopped ");
 		//g.setScanner(System.in);
 	}
+
+	private String getLocalHostname() {
+		try {
+			String result = InetAddress.getLocalHost().getHostName();
+			if (result.trim() != "")
+				return result;
+		} catch (UnknownHostException e) {}
+
+		String host = System.getenv("COMPUTERNAME");
+		if (host != null)
+			return host;
+		host = System.getenv("HOSTNAME");
+		if (host != null)
+			return host;
+
+		return "Unknown";
+	}
 }
+
+
