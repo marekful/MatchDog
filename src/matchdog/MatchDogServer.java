@@ -211,7 +211,7 @@ public class MatchDogServer {
 		prefs = new Object [] {
 				"MatchDog", "malako",
 				true, false, true,
-				true, false, 15,
+				true, true, 15,
 				100, -22000,
 				3, 3, 0.0,			
 				

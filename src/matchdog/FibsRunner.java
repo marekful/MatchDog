@@ -756,6 +756,11 @@ public class FibsRunner extends Thread {
 	
 		// JOIN AN INVTITATION TO RESUME A MATCH
 		if (in.contains("wants to resume a saved match with you")) {
+
+            if (!server.prefs.isAutoJoinSaved()) {
+                return;
+            }
+
 			setInvitationInProgress(true);
 			String[] arr0 = in.split(" wants to resume a saved match with you");
 			resumeopp = arr0[0];
@@ -779,12 +784,11 @@ public class FibsRunner extends Thread {
 					server.fibsout.println("tell " + resumeopp + " Try again in " + tmp / 1000 + " seconds.");
 				}
 			} else if (server.prefs.isAutoJoinSaved()) {
-				server.printDebug("getting RESUME opp rating (oppname: " + resumeopp
-						+ ")");
+				server.printDebug("getting RESUME opp rating (oppname: " + resumeopp + ")");
 				sleepFibs(500);	
 				server.fibsout.println("join " + resumeopp);
-				return;
-			}
+                return;
+            }
 	
 		}
 /*		if(in.startsWith("5 " + resumeopp) && getResumeRating) {
@@ -895,14 +899,11 @@ public class FibsRunner extends Thread {
 			server.setFibsmode(1);
 	
 		// START A MATCH
-		if (in.contains(" has joined you")
-				|| in.contains("You are now playing")
-				|| in.contains(" wants to resume a saved match with you")) { 
+        if (   in.contains(" has joined you")
+            || in.contains("You are now playing")) {
 			
 			startMatch(in);
-	
 		}
-	
 	}
 
 	private synchronized void processGamePlay(String in) {
