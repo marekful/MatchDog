@@ -54,7 +54,7 @@ public class BGRunner extends Thread {
             }
         }
 
-        if(!p.isAlive()) {
+        if(p == null) {
             server.systemPrinter.printDebugln("Couldn't launch gnubg, exiting...");
             server.stopServer();
             return;
