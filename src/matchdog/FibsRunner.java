@@ -205,6 +205,7 @@ public class FibsRunner extends Thread {
 
 					if (filteredInput != null && processNextLine) {
 						processGamePlay(filteredInput);
+                        filteredInput = null;
 					}
 					break;
 				
