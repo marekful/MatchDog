@@ -223,7 +223,9 @@ public class FibsRunner extends Thread {
 		}
 		catch (Exception err) {
 			server.systemPrinter.printDebugln("FibsRunner(run): " + err +  " - " + getName());
-            server.getPrintStreams().forEach(err::printStackTrace);
+            for(PrintStream os : server.getPrintStreams()) {
+                err.printStackTrace(os);
+            }
 		}
         if(!terminating) {
             server.systemPrinter.printDebugln("FibsRunner(run): *** RESTARING FIBS ***" + getName());
