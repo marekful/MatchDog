@@ -53,47 +53,47 @@ public class DebugPrinter {
 		this.bgColor = bgColor;
 	}
 	
-	public void printDebug(String msg, PrintStream os) {
-		printDebug(msg, os, getLabel());
+	public synchronized void printDebug(String msg, PrintStream os) {
+        printDebug(msg, os, getLabel());
 	}
 	
-	public void printDebug(String msg) {
+	public synchronized void printDebug(String msg) {
 		for(PrintStream os : source.getPrintStreams()) {
 			printDebug(msg, os);
 		}
 	}
 	
-	public void printDebug(String msg, PrintStream os, String label) {
-		if(!label.equals("")) {
-			label = getColor() + getBgColor() + label + DebugPrinter.RESET + " ";
-		}
-		os.print(label + msg);
-		os.flush();
+	public synchronized void printDebug(String msg, PrintStream os, String label) {
+        if (!label.equals("")) {
+            label = getColor() + getBgColor() + label + DebugPrinter.RESET + " ";
+        }
+        os.print(label + msg);
+        os.flush();
 	}
 	
-	public void printDebug(String msg, String label) {
+	public synchronized void printDebug(String msg, String label) {
 		for(PrintStream os : source.getPrintStreams()) {
 			printDebug(msg, os, label);
 		}
 	}
 	
-	public void printDebugln(String msg, PrintStream os) {
+	public synchronized void printDebugln(String msg, PrintStream os) {
 		os.println();
 		printDebug(msg, os);
 	}
 	
-	public void printDebugln(String msg) {
+	public synchronized void printDebugln(String msg) {
 		for(PrintStream os : source.getPrintStreams()) {
 			printDebugln(msg, os);
 		}
 	}
 	
-	public void printDebugln(String msg, PrintStream os, String label) {
+	public synchronized void printDebugln(String msg, PrintStream os, String label) {
 		os.println();
 		printDebug(msg, os, label);
 	}
 	
-	public void printDebugln(String msg, String label) {
+	public synchronized void printDebugln(String msg, String label) {
 		for(PrintStream os : source.getPrintStreams()) {
 			printDebugln(msg, os, label);
 		}

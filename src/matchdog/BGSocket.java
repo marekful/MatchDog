@@ -39,8 +39,8 @@ public class BGSocket extends Thread  {
 	public void run() {
 		run = true;
 		try {
-			synchronized(server) {
-				server.notify();
+			synchronized(MatchDog.lock) {
+                MatchDog.lock.notify();
 			}
 			while(( line = in.readLine()) != null && run) {
 	
@@ -58,10 +58,10 @@ public class BGSocket extends Thread  {
 			in.close();
 			out.close();
 		} catch (IOException e) {
-	
-			server.printDebug(e.toString());
+
+            server.systemPrinter.printDebugln(e.toString());
 		}
-		server.printDebug("Exiting BGSocket thread");
+		server.systemPrinter.printDebugln("Exiting BGSocket thread");
 		dead = true;
 	}
 	
@@ -262,7 +262,7 @@ public class BGSocket extends Thread  {
 
 	public void connect() {
 		
-		while(connected != true) {
+		while(!connected) {
 			try {
 				BGSocket.sleep(100);
 				sa = InetAddress.getByName("localhost");

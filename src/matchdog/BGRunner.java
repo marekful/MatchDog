@@ -11,7 +11,7 @@ public class BGRunner extends Thread {
 	
 	Process p;
 	boolean init, isExternal, run, dead;
-	String command;
+	String[] command;
 	MatchDog server;
 	BufferedDebugPrinter printer;
 	String player0, player1;
@@ -19,7 +19,7 @@ public class BGRunner extends Thread {
 	int port;
 	
 	
-	BGRunner(String command, MatchDog server, int port) {
+	BGRunner(String[] command, MatchDog server, int port) {
 		super("BGThred");
 		p = null;
 		init = false;
@@ -41,19 +41,36 @@ public class BGRunner extends Thread {
 	@Override
 	public void run() {
 		run = true;
-		try {
-			
-			String line;
-			p = Runtime.getRuntime().exec(command);
-			BufferedReader input = new BufferedReader(new InputStreamReader(p
-					.getInputStream()));
-			
+
+
+        for(String cmd : command) {
+            try {
+                server.systemPrinter.printDebugln("Trying to launch gnubg" );
+                p = Runtime.getRuntime().exec(cmd);
+
+                break;
+            } catch (Exception e) {
+                server.systemPrinter.printDebugln("gnubg not found at: " + cmd);
+            }
+        }
+
+        if(!p.isAlive()) {
+            server.systemPrinter.printDebugln("Couldn't launch gnubg, exiting...");
+            server.stopServer();
+            return;
+        }
+
+        BufferedReader input = new BufferedReader(new InputStreamReader(p
+                .getInputStream()));
+
+        try {
 			init = true;
-			synchronized(server) {
-				server.notify();
+			synchronized(MatchDog.lock) {
+                MatchDog.lock.notify();
 			}
-			
-			while ((line = input.readLine()) != null && run) {
+
+            String line;
+            while ((line = input.readLine()) != null && run) {
 				
 				if(line.startsWith("Waiting for a connection")) {
 					isExternal = true;
@@ -70,11 +87,11 @@ public class BGRunner extends Thread {
 			}
 			input.close();
 		} catch (Exception err) {
-			server.printDebug("BGRunner(run): " + err);
+			server.systemPrinter.printDebugln("BGRunner(run): " + err);
 			//err.printStackTrace();
 		}
 
-		server.printDebug("Exiting BGRunner thread");
+		server.systemPrinter.printDebugln("Exiting BGRunner thread");
 		dead = true;
 	}
 

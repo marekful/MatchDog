@@ -13,13 +13,18 @@ public class MatchDogServer {
 	public static final String 	fibshost 	= "fibs.com";
 	// Fibs port
 	public static final int 	fibsport 	= 4321;
-	// Full path to gnubg executable and params (-t for no gui, -q for silent)
-	public static final String 	gnubgcmd 	= "/Applications/gnubg.app/Contents/MacOS/local/bin/gnubg -t -q";
-	// A small shell script that uploads match log files
+	// Array of full paths to gnubg executable and params (-t for no gui, -q for silent)
+    // Each will be tried, firsst succeeds used
+    public static final String[] gnubgCmdArr = new String[] {
+        "/Applications/gnubg.app/Contents/MacOS/local/bin/gnubg -t -q",
+        "/usr/local/chroot/home/marekful/gnubg/gnubg-1.05.000/gnubg -t -q"
+    };
+    // A small shell script that uploads match log files
 	// comes with the package and should be installed
 	// so it's executable by the server. Give its path here.
-	public static final String 	ftpscriptpath 	= "/bin/./ftpupload.sh";	
-	
+	public static final String 	ftpscriptpath 	= "/bin/./ftpupload.sh";
+
+
 	public static final String platform = "MatchDogServer";
 	public static final String version = "0.5";
 	/*** <-- ***/

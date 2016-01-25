@@ -12,7 +12,7 @@ public class BufferedDebugPrinter extends DebugPrinter {
 	HashMap<PrintStream, Boolean> suspended;
 	String lineSeparator;
 
-    static final Object lock = new Object();
+    private static final Object lock = new Object();
 
     public BufferedDebugPrinter(PrintableStreamSource source, String label, String color, String bgColor) {
 		super(source, label, color, bgColor);
@@ -38,7 +38,7 @@ public class BufferedDebugPrinter extends DebugPrinter {
 		}
 	}
 
-	public void printDebug(String msg, PrintStream os, String label) {
+	public synchronized void printDebug(String msg, PrintStream os, String label) {
 		if(isSuspended(os)) {
 			if(!label.equals("")) {
 				label = getColor() + getBgColor()+ label + DebugPrinter.RESET + " ";
@@ -49,7 +49,7 @@ public class BufferedDebugPrinter extends DebugPrinter {
 		}
 	}
 	
-	public void printDebugln(String msg, PrintStream os) {
+	public synchronized void printDebugln(String msg, PrintStream os) {
 		if(isSuspended(os)) {
 			_buff(msg, lineSeparator + getColor() + getBgColor() 
 					+ getLabel() + DebugPrinter.RESET);
@@ -59,7 +59,7 @@ public class BufferedDebugPrinter extends DebugPrinter {
 	}
 	
 	
-	public void printDebugln(String msg, PrintStream os, String label) {
+	public synchronized void printDebugln(String msg, PrintStream os, String label) {
 		if(isSuspended(os)) {
 			if(!label.equals("")) {
 				label = lineSeparator + getColor() + getBgColor()+ label + DebugPrinter.RESET;
