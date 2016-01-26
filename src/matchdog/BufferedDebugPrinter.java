@@ -6,35 +6,47 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class BufferedDebugPrinter extends DebugPrinter {
-	
-	PrintableStreamSource source;
-	ArrayList<String> buff;
-	HashMap<PrintStream, Boolean> suspended;
-	String lineSeparator;
 
     private static final Object lock = new Object();
+    private static HashMap<PrintStream, ArrayList<String>> buff;
+
+    static {
+        buff = new HashMap<PrintStream, ArrayList<String>>();
+    }
+
+    static synchronized void removeOutputBuffer(PrintStream os) {
+        if(buff.get(os) == null) return;
+        buff.remove(os);
+    }
+
+    private PrintableStreamSource source;
+    private HashMap<PrintStream, Boolean> suspended;
+    private String lineSeparator;
 
     public BufferedDebugPrinter(PrintableStreamSource source, String label, String color, String bgColor) {
 		super(source, label, color, bgColor);
 		this.source = source;
 		suspended = new HashMap<PrintStream, Boolean>();
-		buff = new ArrayList<String>();
 		lineSeparator = System.getProperty("line.separator");
 	}
 	
 	private void _flush(PrintStream os) {
 		synchronized (lock) {
-			for(String msg : buff) {
+            if(buff.get(os) == null) return;
+			for(String msg : buff.get(os)) {
 				os.print(msg);
 			}
 			os.flush();
-			buff.clear();
+			buff.get(os).clear();
 		}
 	}
 
-	private void _buff(String msg, String label) {
+	private void _buff(PrintStream os, String msg, String label) {
 		synchronized (lock) {
-			buff.add(label + " " + msg);
+            if(buff.get(os) == null) {
+                buff.put(os, new ArrayList<String>());
+            }
+            buff.get(os).add(label + " " + msg);
 		}
 	}
 
@@ -43,7 +55,7 @@ public class BufferedDebugPrinter extends DebugPrinter {
 			if(!label.equals("")) {
 				label = getColor() + getBgColor()+ label + DebugPrinter.RESET + " ";
 			}
-			_buff(msg, label);
+			_buff(os, msg, label);
 		} else {
 			super.printDebug(msg, os, label);
 		}
@@ -51,7 +63,7 @@ public class BufferedDebugPrinter extends DebugPrinter {
 	
 	public synchronized void printDebugln(String msg, PrintStream os) {
 		if(isSuspended(os)) {
-			_buff(msg, lineSeparator + getColor() + getBgColor() 
+			_buff(os, msg, lineSeparator + getColor() + getBgColor()
 					+ getLabel() + DebugPrinter.RESET);
 		} else {
 			super.printDebugln(msg, os);
@@ -64,7 +76,7 @@ public class BufferedDebugPrinter extends DebugPrinter {
 			if(!label.equals("")) {
 				label = lineSeparator + getColor() + getBgColor()+ label + DebugPrinter.RESET;
 			}
-			_buff(msg, label);
+			_buff(os, msg, label);
 		} else {
 			super.printDebugln(msg, os, label);
 		}
@@ -81,11 +93,7 @@ public class BufferedDebugPrinter extends DebugPrinter {
 		this.suspended.put(os, suspended);
 	}
 
-    public ArrayList<String> getBuff() {
-        return buff;
-    }
-
-    public void setBuff(ArrayList<String> buff) {
-        this.buff = buff;
+    public PrintableStreamSource getSource() {
+        return source;
     }
 }

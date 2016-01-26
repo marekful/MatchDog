@@ -7,6 +7,6 @@ public class BufferedFibsDebugPrinter extends BufferedDebugPrinter {
 	}
 	
 	public String getLabel() {
-		return "fibs[" + ((MatchDog)source).getFibsmode() + "]:";
+		return "fibs[" + ((MatchDog)super.getSource()).getFibsmode() + "]:";
 	}
 }

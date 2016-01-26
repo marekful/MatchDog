@@ -32,7 +32,6 @@ public class BGSocket extends Thread  {
 		printer = new BufferedDebugPrinter(
 			server, "gnubg-external:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_BLUE
 		);
-		printer.setBuff(server.outputBuffer);
 	}
 
 	@Override

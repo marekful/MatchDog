@@ -84,9 +84,6 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 		systemPrinter = new BufferedDebugPrinter(
 			this, "system:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_RED
 		);
-        outputBuffer = new ArrayList<String>();
-        printer.setBuff(outputBuffer);
-        systemPrinter.setBuff(outputBuffer);
 	}
 	
 	public void run() {
@@ -140,10 +137,10 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 		BufferedReader input = new BufferedReader(new InputStreamReader(in));
 		PrintStream output = out;
 
-		
 		if(!out.equals(System.out)) {
 			listeners.put(listenerId, output);
 		}
+
 		String line = "";
 		for(;;) {
 			
@@ -350,6 +347,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 		}
 		if(!out.equals(System.out)) {
 			listeners.remove(listenerId);
+            BufferedDebugPrinter.removeOutputBuffer(output);
 		}
 	}
 

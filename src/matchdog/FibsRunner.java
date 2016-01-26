@@ -140,9 +140,6 @@ public class FibsRunner extends Thread {
 		matchinfoPrinter = new BufferedDebugPrinter(
 			server, "MatchInfo:", UnixConsole.BLACK, UnixConsole.BACKGROUND_YELLOW
 		);
-
-        printer.setBuff(server.outputBuffer);
-        matchinfoPrinter.setBuff(server.outputBuffer);
 	}
 
 	@Override
