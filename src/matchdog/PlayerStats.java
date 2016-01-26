@@ -5,6 +5,14 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 
+
+/**
+ * PlayerStats implements a serializable holder for
+ * PlayerStat instances. Each PlayerStat represents
+ * one opponenent and keeps a history of recorded
+ * matches each represented by a MatchLog instance
+ *
+ * */
 public class PlayerStats implements Serializable {
 
 	/**
@@ -21,7 +29,7 @@ public class PlayerStats implements Serializable {
 	}
 	
 	PlayerStat getByName(String name) {
-		return pstats.get(name); 
+		return pstats.get(name);
 	}
 	
 	boolean hasPlayer(String name) { 
@@ -53,9 +61,6 @@ public class PlayerStats implements Serializable {
 		}
 		
 		MatchLog createLog(Match match) {
-			
-			//String timestr = match.getTime() / 1000	/ 60 + ":" 
-			//+ (match.getTime() / 1000 - match.getTime() / 1000 / 60 * 60);
 
 			HashMap<Integer, String> sh = match.scorehistory;
 			HashMap<Integer, Long> th = match.timehistory;
@@ -72,21 +77,22 @@ public class PlayerStats implements Serializable {
 					match.getOppRatingChange(),
 					sh, th, rpg, match.isDropped());
 			
-			//if(match.isDropping()) 
-			//	log.savedkey = match.start;
-			
 			return log;
 		}
 		
 		void putMatch(Match match) {
 
 			MatchLog log = createLog(match);
-
 			matchcount++;
-			
 			history.put(match.start, log);
 		}
 		
+		void putMatch(Date start, MatchLog log) {
+
+			matchcount++;
+			history.put(start, log);
+		}
+
 		void appendMatch(Match match) {
 			
 			MatchLog saved = getSaved();
@@ -146,12 +152,6 @@ public class PlayerStats implements Serializable {
 				saved.dropresumedates.put(tmp, null);
 				saved.dropresumekey = tmp;
 			}
-
-			
-			//removeSaved(saved.savedkey);
-			
-			//history.put(match.start, log);
-			
 		}
 
 		private MatchLog getSaved() {

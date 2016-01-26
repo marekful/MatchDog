@@ -183,6 +183,11 @@ public class StatWriter {
 				String gamestring = "", space = "", space2 = "";
 				for (int i = 1; i <= l.scorehistory.size(); i++) {
 					if(l == null || l.scorehistory.size() < 1/* || l.gamecount == 0*/) {
+                        server.printDebug(" *** ERROR: matchlog not found");
+						return false;
+					}
+					if(l.timehistory == null || l.timehistory.get(i) == null) {
+                        server.printDebug(" *** ERROR: timehistory not found");
 						return false;
 					}
 					String tmp = l.timehistory.get(i) / 1000 / 60 + ":"

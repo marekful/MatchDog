@@ -416,8 +416,8 @@ public class FibsRunner extends Thread {
 		// if 'show saved' was issued store saved matches
 		if (in.startsWith("  opponent") && getSavedMatches) {
 			gettingSaved = true;
+            server.savedMatches.clear();
 			server.printDebug("start getting saved matches");
-			server.savedMatches.clear();
 		}
 		else if (in.contains("no saved games.")) {
 			gettingSaved = false;

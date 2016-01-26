@@ -181,7 +181,7 @@ public class MatchDogServer {
 		players.put(2, new PlayerPrefs(prefs));
 		prefs = new Object [] {
 				"", "",
-				false, false, true,
+				true, false, true,
 				true, true, 5,
 				100, 0,
 				0, 0, 0.700,

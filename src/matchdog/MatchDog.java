@@ -1,19 +1,10 @@
 package matchdog;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.util.*;
-import java.io.*;
-import java.net.InetAddress;
-
+import etc.TorExitNodeChecker;
 import jcons.src.com.meyling.console.UnixConsole;
 
-import etc.TorExitNodeChecker;
+import java.io.*;
+import java.util.*;
 
 public class MatchDog extends Thread implements PrintableStreamSource {
 	
@@ -30,6 +21,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 	Inviter inviter;
 	PlayerPrefs prefs;
 	Map<Integer, String> savedMatches;
+	//HashMap<String, HashMap<Integer, String>> savedMatches;
 	String lastopp;
 	int replayTimeout = 90, // sec TODO move this to prefs
 		fibsCount, matchCount; 
@@ -506,8 +498,9 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 	protected void initPlayerStats() {
 		printDebug("OPENING PlayerStats file...");
 
-		if (openPlayerStats(pstatspath)) {
+		if ((playerstats = openPlayerStats(pstatspath)) != null) {
 			printDebug("OK (" + pstatspath + ")");
+            mergePlayerStats();
 		} else {
 			printDebug("FAILED, CREATING EMPTY PlayerStats ("
 					+ "will be written when first match stops --> " + pstatspath
@@ -515,6 +508,65 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 			playerstats = new PlayerStats();
 		}
 	}
+
+    private void mergePlayerStats() {
+        String importPath = pstatspath + ".import";
+        PlayerStats importPs;
+
+        if ((importPs = openPlayerStats(importPath)) == null) {
+            return;
+        }
+
+        printDebug("IMPORTING from .pstat.import file (" + importPath + ")");
+
+        int mc = 0;
+        for(String player : importPs.pstats.keySet()) {
+            PlayerStats.PlayerStat ps = importPs.pstats.get(player);
+            printDebug(" ** Player: " + player + " history size: " + ps.history.size());
+
+            if(ps.history.size() == 0) continue;
+
+            if(playerstats.hasPlayer(player)) {
+                printDebug(" ** Appending to existing player");
+            } else {
+                printDebug(" ** Player doesn't exist, creating");
+                playerstats.cratePlayer(player);
+            }
+            printDebug(" ** Found "
+                    + ps.history.size() + " match(es) to import in addition to "
+                    + playerstats.getByName(player).history.size()
+                    + " existing match(es)");
+
+            //playerstats.getByName(player).history.putAll(ps.history);
+            printDebug("");
+
+            MatchLog toImport, existing;
+            for(Date d : ps.getHistory().keySet()) {
+                toImport = ps.getHistory().get(d);
+                existing = playerstats.getByName(player).getHistory().get(d);
+
+                printDebug(" ** Checking match " + d);
+                //printDebug(" **   import - ml: " + toImport.length + " score: " + toImport.finalscore
+                //        + " game count: " + toImport.gamecount + " time: " + toImport.getTotalTimeStr(0));
+
+                if(existing != null) {
+                    //printDebug(" **   existing - ml: " + existing.length + " score: " + existing.finalscore
+                    //        + " game count: " + existing.gamecount + " time: " + existing.getTotalTimeStr(0));
+                } else {
+                    printDebug(" ** IMPORTING MATCH ** ** ** ");
+                    playerstats.getByName(player).putMatch(d, toImport);
+                    mc++;
+                }
+            }
+
+            printDebug("");
+        }
+
+        if(mc > 0) {
+            printDebug(" ** Imported " + mc + " match(es), WRITING PSTATS FILE...");
+            writePlayerStats(getPstatspath());
+        }
+    }
 	
 	protected void startInviter(String name, int ml) {
 		if(fibs.match != null || fibsmode == 2) 
@@ -621,29 +673,26 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 		printer.printDebugln(str, "MatchDog[" + c + "]:");
 	}
 	
-	public boolean openPlayerStats(String path) {
-	      
-	      
+	public PlayerStats openPlayerStats(String path) {
 	    try {
 			FileInputStream fin = new FileInputStream(path);
 			ObjectInputStream ois = new ObjectInputStream(fin);
-			playerstats = (PlayerStats) ois.readObject();
+			PlayerStats ps = (PlayerStats) ois.readObject();
 			ois.close();
+            return ps;
 		} catch (IOException e) {
 			printDebug(e.toString());
 			//e.printStackTrace();
-			return false;
+			return null;
 		} catch (ClassNotFoundException e) {
 			printDebug(e.toString());
 			//e.printStackTrace();
-			return false;
+			return null;
 		} catch (Exception e) {
 			printDebug(e.toString());
 			//e.printStackTrace();
-			return false;
+			return null;
 		}
-
-		return true;
 	}
 		
 	boolean writePlayerStats(String filepath) {
