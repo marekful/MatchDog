@@ -23,6 +23,7 @@ public class MatchDogServer {
 	// comes with the package and should be installed
 	// so it's executable by the server. Give its path here.
 	public static final String 	ftpscriptpath 	= "/bin/./ftpupload.sh";
+	public static final String 	scpscriptpath 	= "../scripts/./scp.sh";
 
 
 	public static final String platform = "MatchDogServer";

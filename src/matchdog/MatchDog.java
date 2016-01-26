@@ -731,6 +731,9 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 	public String getFtpScriptPath() {
 		return MatchDogServer.ftpscriptpath;
 	}
+	public String getScpScriptPath() {
+		return MatchDogServer.scpscriptpath;
+	}
 	public String[] getGnuBgCmdArr() {
 		return MatchDogServer.gnubgCmdArr;
 	}
