@@ -93,7 +93,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 	
 		pstatspath = prefs.name + ".pstats";
 		
-		if(listenLocal == true) {
+		if(listenLocal) {
 			listeners.put(0, System.out);
 		}
 		

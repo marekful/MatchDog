@@ -114,7 +114,7 @@ public class StatWriter {
 			return false;
 		} else {
 			
-			SimpleDateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+			SimpleDateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm:serverSocket");
 			
 			HashMap<Date, MatchLog> h = p.getHistory();
 			// sorted h

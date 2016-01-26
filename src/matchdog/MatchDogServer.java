@@ -285,60 +285,84 @@ public class MatchDogServer {
 		g.start();
 		
 		if(g.prefs.getListenerPort() > 0) {
-			startServer(g);
+			SocketServer ss = new SocketServer(g);
+            ss.acceptNewConnection();
 		}
 	}
 	
-	private synchronized void startServer(MatchDog g) {
-		ServerSocket ss = null;
-		Socket sss;
-		InputStream ssins;
-		OutputStream ssouts;
-		PrintWriter ssout;
-		BufferedReader ssin;
-		
-		int listenerPort = g.prefs.getListenerPort();
-		
-		while(true) {
-			try {
-				ss = new ServerSocket(listenerPort);
-				g.systemPrinter.printDebugln(">>> Waiting for connection on port " + listenerPort);
-				System.out.println("Listening on port " + listenerPort); // print to stdout in case we started in background with listenLocal=0
-				break;
-			} catch(BindException e) {
-				listenerPort++;
-			} catch(Exception e) {
-				g.systemPrinter.printDebugln(">>> Exception creating socket: " + e.getMessage());
-				e.printStackTrace();
-				break;
-			}
-		}
-		
-		if(ss == null) {
-			g.systemPrinter.printDebugln(">>> Couldn't create socket, exiting listener");
-			return;
-		}
-		
-		while(true) {
-			try {
-				sss = ss.accept();
-				g.systemPrinter.printDebugln(">>> Connection from " + sss.getRemoteSocketAddress());
-				
-				PrintWriter _p = new PrintWriter(sss.getOutputStream());
-				_p.print("Hello");
-				_p.println();
-				_p.flush();
-				
-				g.listen(sss.getInputStream(), new PrintStream(sss.getOutputStream()));
-				g.systemPrinter.printDebugln(">>> Connection on port " + listenerPort + " closed");
-			
-			} catch(Exception e) {
-				e.printStackTrace();
-				break;
-			}
-		}
-		g.printDebug(">>> Listener stopped ");
-		//g.setScanner(System.in);
+	class SocketServer {
+
+		ServerSocket serverSocket = null;
+        MatchDog matchdog;
+        int listenerPort;
+
+        SocketServer(MatchDog matchdog) {
+            this.matchdog = matchdog;
+            listenerPort = matchdog.prefs.getListenerPort();
+            createServer();
+        }
+
+        private void createServer() {
+            while (true) {
+                try {
+                    serverSocket = new ServerSocket(listenerPort);
+                    matchdog.systemPrinter.printDebugln(">>> Waiting for connection on port " + listenerPort);
+                    System.out.println("Listening on port " + listenerPort); // print to stdout in case we started in background with listenLocal=0
+                    break;
+                } catch (BindException e) {
+                    listenerPort++;
+                } catch (Exception e) {
+                    matchdog.systemPrinter.printDebugln(">>> Exception creating socket: " + e.getMessage());
+                    e.printStackTrace();
+                    break;
+                }
+            }
+
+
+            if (serverSocket == null) {
+                matchdog.systemPrinter.printDebugln(">>> Couldn't create socket, exiting listener");
+            }
+        }
+
+        public void acceptNewConnection() {
+            (new Thread(new ConnectionHandle())).start();
+        }
+
+        class ConnectionHandle implements Runnable {
+
+            Socket clientSocket;
+
+            ConnectionHandle() {}
+
+            @Override
+            public void run() {
+                try {
+                    clientSocket = serverSocket.accept();
+                    matchdog.systemPrinter.printDebugln(
+                            ">>> Connection from " + clientSocket.getRemoteSocketAddress()
+                    );
+
+                    acceptNewConnection();
+
+                    PrintWriter _p = new PrintWriter(clientSocket.getOutputStream());
+                    _p.print("Hello from " + clientSocket.getRemoteSocketAddress());
+                    _p.print(" This is " + matchdog.prefs.getName() + "@" + matchdog.hostName);
+                    _p.println();
+                    _p.flush();
+
+                    matchdog.listen(
+                            clientSocket.getInputStream(),
+                            new PrintStream(clientSocket.getOutputStream())
+                    );
+                    matchdog.systemPrinter.printDebugln(
+                            ">>> Connection from " + clientSocket.getRemoteSocketAddress() + " closed"
+                    );
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
 	}
 
 	private String getLocalHostname() {
