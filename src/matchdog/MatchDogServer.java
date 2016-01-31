@@ -36,7 +36,7 @@ public class MatchDogServer {
 	int currentplayer;
 	Map<Integer, PlayerPrefs> players;
 	boolean listenLocal = true;
-	
+
 	public static void main(String [] args) {
 		new MatchDogServer(args);
 	}
@@ -116,7 +116,7 @@ public class MatchDogServer {
 		players.put(0, new PlayerPrefs(prefs));
 		prefs = new Object [] {
 				"marekful", "malako",
-				false, false, true,
+				false, false, false,
 				true, true, 15,
 				100, -22000,
 				3, 3, 0.0,			
@@ -144,12 +144,12 @@ public class MatchDogServer {
 				"", 0,
 				"", 0,
 				
-				4546, 0
+				4546, 55444
 		};		
 		players.put(1, new PlayerPrefs(prefs));
 		prefs = new Object [] {
 				"MatchDogMini", "piko",
-				true, false, true,
+				true, true, true,
 				true, true, 1,
 				1, -16000,
 				3, 3, 0.000,
@@ -166,16 +166,16 @@ public class MatchDogServer {
 				4,  3,  -1,  0, 0,					
 				
 				"MonteCarlo", 1,
-				"GammonBot_IX", 1,
-				"GammonBot_IV", 1,
-				"GammonBot_X", 1,
-				"GammonBot_VI", 1,
+				"", 1,
+				"", 1,
+				"", 1,
+				"", 1,
 				
-				"GammonBot_XVIII", 1,
-				"GammonBot_XVI", 1,
-				"GammonBot_XIII", 1,
-				"GammonBot_II", 1,
-				"GammonBot_VIII", 1,
+				"", 1,
+				"", 1,
+				"", 1,
+				"", 1,
+				"", 1,
 				
 				4537, 55272
 		};		
@@ -216,7 +216,7 @@ public class MatchDogServer {
 		players.put(3, new PlayerPrefs(prefs));
 		prefs = new Object [] {
 				"MatchDog", "malako",
-				true, false, true,
+				true, true, true,
 				true, true, 15,
 				100, -22000,
 				3, 3, 0.0,			
@@ -232,17 +232,17 @@ public class MatchDogServer {
 				4,  2,   0,  6, 0.08,
 				4,  3,  -1,  0, 0,	
 				
-				"GammonBot_XVIII", 11,
-				"GammonBot_IX", 11,
-				"GammonBot_IV", 11,
-				"GammonBot_X", 11,
-				"GammonBot_VI", 11,
+				"bonehead", 7,
+				"", 11,
+				"", 11,
+				"", 11,
+				"", 11,
 				
-				"GammonBot_XVIII", 11,
-				"GammonBot_XVI", 11,
-				"GammonBot_XIII", 11,
-				"GammonBot_II", 11,
-				"GammonBot_XII", 11,
+				"", 11,
+				"", 11,
+				"", 11,
+				"", 11,
+				"", 11,
 				
 				4548, 55221
 		};		
@@ -359,6 +359,7 @@ public class MatchDogServer {
                     );
 
                 } catch (Exception e) {
+                    System.out.println(" >> >> >> >> " + e.getMessage());
                     e.printStackTrace();
                 }
             }

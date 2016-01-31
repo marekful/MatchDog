@@ -41,7 +41,6 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 	Timer keepalivetimer;
 	TimerTask keepalivetimertask;
 	HashMap<Integer, PrintStream> listeners = new HashMap<Integer, PrintStream>();
-    ArrayList<String> outputBuffer;
 	
 	protected int fibsmode;
 	
@@ -141,206 +140,223 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 			listeners.put(listenerId, output);
 		}
 
-		String line = "";
-		for(;;) {
-			
-			if(contd) {
-                if(welcome) {
-                    printWelcome(output);
-                    output.print(getPrompt());
-                    welcome = false;
+        try {
+            String line = "";
+            for (; ; ) {
+
+                if (contd) {
+                    if (welcome) {
+                        printWelcome(output);
+                        output.print(getPrompt());
+                        welcome = false;
+                    } else {
+                        output.print(getPrompt());
+                    }
+                    suspendOutput(output);
                 } else {
-                    output.print(getPrompt());
+                    unSuspendOutput(output);
                 }
-                suspendOutput(output);
-			} else {
-                unSuspendOutput(output);
-            }
 
-			try {
-				line = input.readLine();
-			} catch(IOException e) {
-				exit = false;
-				break;
-			}
+                try {
+                    line = input.readLine();
+                } catch (IOException e) {
+                    exit = false;
+                    break;
+                }
 
-            // enter shell
-            if(line != null && !contd) {
+                if(out.checkError()) {
+                    exit = false;
+                    break;
+                }
+
+                // enter shell
+                if (line != null && !contd) {
+                    contd = true;
+                    continue;
+                }
+
+                // when socket read fails, fibs will restart
+                if (line == null) {
+                    exit = false;
+                    break;
+                }
+
+                // empty line, new shell prompt
+                if (line.equals("")) {
+                    continue;
+                }
+
+                if (line.length() == 1) {
+                    int code = (int) line.charAt(0);
+                    output.print(code);
+                    switch (code) {
+                        // exit shell
+                        case 27:
+                            output.print("Leaving MatchDog Shell");
+                            contd = false;
+                            welcome = true;
+                            continue;
+                    }
+                }
+
                 contd = true;
-                continue;
-            }
 
-            // when socket read fails, fibs will restart
-            if(line == null) {
-				exit = false;
-				break;
-			}
+                if (line.equals("exit")) {
+                    unSuspendOutput(output);
+                    break;
+                }
+                if (line.equals("close") && !in.equals(System.in)) {
+                    exit = false;
+                    break;
+                }
 
-            // empty line, new shell prompt
-            if(line.equals("")) {
-                continue;
-            }
+                if (line.equals("2")) {
+                    writer = gnubgout;
+                    outputName = "gnubgout";
+                } else if (line.equals("1")) {
+                    writer = fibsout;
+                    outputName = "fibsout";
+                } else if (line.equals("6")) {
+                    writer = bgsocket.out;
+                    outputName = "bgsocket.out";
+                } else if (line.equals("8")) {
+                    if (fibs.lastboard != null) {
+                        bgsocket.out.printf("%s", fibs.lastboard.trim() + "\r\n");
+                    }
+                    continue;
+                } else if (line.equals("16")) {
+                    statview.dumpPlayerStats("", 0);
+                    continue;
+                } else if (line.equals("17")) {
+                    statview.dumpPlayerStats("", 1);
+                    continue;
+                } else if (line.split(" ")[0].equals("200")) {
+                    String host = line.split(" ")[1];
+                    printDebug("TOR CHECHK [" + host + "] result: "
+                            + TorExitNodeChecker.isTorExitNode(host));
+                    continue;
+                } else if (line.equals("166")) {
+                    removePlayerStat("marekful");
+                    continue;
+                } else if (line.split(" ")[0].equals("16")) {
+                    if (!line.split(" ")[1].trim().equals(""))
+                        statview.dumpPlayerStats(line.split(" ")[1], 0);
+                    output.println();
+                    continue;
+                } else if (line.split(" ")[0].equals("17")) {
+                    if (!line.split(" ")[1].trim().equals(""))
+                        statview.dumpPlayerStats(line.split(" ")[1], 1);
+                    output.println();
+                    continue;
+                } else if (line.split(" ")[0].equals("18")) {
+                    if (!line.split(" ")[1].trim().equals(""))
+                        statview.dumpPlayerStats(line.split(" ")[1], 3);
+                    output.println();
+                    continue;
+                } else if (line.equals("111")) {
+                    output.print(prefs.showPrefs());
+                    output.println();
+                    continue;
+                } else if (line.equals("88")) {
+                    resendLastBoard();
+                    continue;
+                } else if (line.equals("31")) {
+                    prefs.setAutoinvite((prefs.isAutoinvite()) ? false : true);
+                    output.print("autoinvite is now: " + prefs.isAutoinvite());
+                    output.println();
+                    continue;
+                } else if (line.equals("32")) {
+                    prefs.setAutojoin((prefs.isAutojoin()) ? false : true);
+                    output.print("autojoin is now: " + prefs.isAutojoin());
+                    output.println();
+                    continue;
+                } else if (line.equals("9")) {
 
-            if(line.length() == 1) {
-                int code = (int) line.charAt(0);
-                output.print(code);
-                switch (code) {
-                    // exit shell
-                    case 27 :
-                        output.print("Leaving MatchDog Shell");
-                        contd = false;
-                        welcome = true;
-                        continue;
+                    if (fibs.match != null) {
+                        if (fibs.match.isCrawford()) {
+                            fibs.match.setCrawford(false);
+                            output.print("crawford is now: " + fibs.match.isCrawford());
+                            output.println();
+                        } else {
+                            fibs.match.setCrawford(true);
+                            output.print("crawford is now: " + fibs.match.isCrawford());
+                            output.println();
+                        }
+                    }
+                    continue;
+                } else if (line.equals("7")) {
+                    fibs.getSavedMatches();
+                    continue;
+                } else if (line.equals("29")) {
+                    fibs.procGPcounter = 0;
+                    continue;
+                } else if (line.equals("3")) {
+                    fibs.setShowMsgType(0, true);
+                    continue;
+                } else if (line.split(" ")[0].equals("3")) {
+                    String[] split = line.split(" ");
+                    int index = Integer.parseInt(split[1]);
+                    fibs.setShowMsgType(index, false);
+                    continue;
+                } else if (line.equals("4")) {
+                    fibs.login();
+                    continue;
+                } else if (line.equals("refibs")) {
+                    restartFibs();
+                    continue;
+                } else if (line.equals("uptime")) {
+                    output.print(serverStartedAt);
+                    output.println();
+                    continue;
+                } else if (line.equals("stat")) {
+                    output.print("started at " + serverStartedAt + " match# "
+                            + matchCount + " fibs# " + fibsCount
+                            + " pGP# " + fibs.procGPcounter);
+                    output.println();
+                    continue;
+                } else if (line.equals("19")) {
+                    output.print(prefs.getPreferredOpps().toString());
+                    output.println();
+                    continue;
+                } else {
+                    output.print(getPrompt() + "Unknown command: '" + line + "' (" + line.length() + ")");
+                    output.println();
+                    continue;
+                }
+
+                output.print(outputName + "$ ");
+                output.flush();
+                contd = false;
+                welcome = true;
+
+                try {
+                    line = input.readLine();
+                } catch (IOException e) {
+                    exit = false;
+                    break;
+                }
+                output.print("Leaving MatchDog Shell");
+
+                try {
+                    writer.println(line);
+                } catch (NullPointerException e) {
+                    //
+                } catch (Exception e) {
+                    printDebug("Exception in runServer(): " + e.getMessage());
+                    e.printStackTrace();
                 }
             }
-
-            contd = true;
-
-            if(line.equals("exit")) {
-                unSuspendOutput(output);
-                break;
-            }
-            if(line.equals("close") && !in.equals(System.in)) {
-                exit = false;
-                break;
-            }
-
-			if(line.equals("2")) {
-				writer = gnubgout;
-				outputName = "gnubgout";
-			} else if(line.equals("1")) {
-				writer = fibsout;
-				outputName = "fibsout";
-			}  else if(line.equals("6")) {
-				writer = bgsocket.out;
-				outputName = "bgsocket.out";
-			}  else if(line.equals("8")) {
-				if(fibs.lastboard != null) {
-					bgsocket.out.printf("%s", fibs.lastboard.trim() + "\r\n");
-				}
-				continue;
-			}  else if(line.equals("16")) {
-				statview.dumpPlayerStats("", 0);
-				continue;
-			}  else if(line.equals("17")) {
-				statview.dumpPlayerStats("", 1);
-				continue;
-			}   else if(line.split(" ")[0].equals("200")) {
-				String host = line.split(" ")[1];
-				printDebug("TOR CHECHK [" + host + "] result: " 
-						+ TorExitNodeChecker.isTorExitNode(host));
-				continue;
-			}  else if(line.equals("166")) {
-				removePlayerStat("marekful");
-				continue;
-			}  else if(line.split(" ")[0].equals("16")) {
-				if(!line.split(" ")[1].trim().equals("")) 
-					statview.dumpPlayerStats(line.split(" ")[1], 0);
-                output.println();
-				continue;
-			}  else if(line.split(" ")[0].equals("17")) {
-				if(!line.split(" ")[1].trim().equals("")) 
-					statview.dumpPlayerStats(line.split(" ")[1], 1);
-                output.println();
-				continue;
-			}  else if(line.split(" ")[0].equals("18")) {
-				if(!line.split(" ")[1].trim().equals("")) 
-					statview.dumpPlayerStats(line.split(" ")[1], 3);
-                output.println();
-				continue;
-			}  else if(line.equals("111")) {
-				output.print(prefs.showPrefs());
-                output.println();
-				continue;
-			}  else if(line.equals("88")) {
-				resendLastBoard();
-                continue;
-			} else if(line.equals("31")) {
-				prefs.setAutoinvite( (prefs.isAutoinvite()) ? false : true );
-                output.print("autoinvite is now: " + prefs.isAutoinvite());
-                output.println();
-				continue;
-			} else if(line.equals("32")) {
-				prefs.setAutojoin((prefs.isAutojoin()) ? false : true );
-				output.print("autojoin is now: " + prefs.isAutojoin());
-                output.println();
-				continue;
-			} else if(line.equals("9")) {
-				
-				if(fibs.match != null) {
-					if(fibs.match.isCrawford()){
-						fibs.match.setCrawford(false);
-                        output.print("crawford is now: " + fibs.match.isCrawford());
-                        output.println();
-					} else { 
-						fibs.match.setCrawford(true);
-                        output.print("crawford is now: " + fibs.match.isCrawford());
-                        output.println();
-					}
-				}
-				continue;
-			}  else if(line.equals("7")) {
-				fibs.getSavedMatches();
-				continue;
-			}   else if(line.equals("29")) {
-				fibs.procGPcounter = 0;
-				continue;
-			}  else if(line.equals("3")) {
-				fibs.setShowMsgType(0, true);
-				continue;
-			}  else if(line.split(" ")[0].equals("3")) {
-				String [] split = line.split(" ");
-				int index = Integer.parseInt(split[1]);
-				fibs.setShowMsgType(index, false);
-				continue;
-			} else if(line.equals("4")) {
-				fibs.login();
-				continue;
-			} else if(line.equals("refibs")) {
-				restartFibs();
-				continue;
-			} else if(line.equals("uptime")) {
-				output.print(serverStartedAt);
-                output.println();
-				continue;
-			} else if(line.equals("stat")) {
-				output.print("started at " + serverStartedAt + " match# "
-									+ matchCount + " fibs# " + fibsCount 
-									+ " pGP# " + fibs.procGPcounter);
-                output.println();
-				continue;
-			} else if (line.equals("19")) {
-				output.print(prefs.getPreferredOpps().toString());
-                output.println();
-				continue;
-			} else {
-                output.print(getPrompt() + "Unknown command: " + line);
-                output.println();
-				continue;
-			}
-		
-			output.print(outputName + "$ ");
-			output.flush();
-			contd = false;
-            welcome = true;
-
-			try {
-				line = input.readLine();
-			} catch(IOException e) {
-				exit = false;
-				break;
-			}
-            output.print("Leaving MatchDog Shell");
-			
-			try {
-				writer.println(line);
-			} catch(NullPointerException e) {
-				//
-			} catch(Exception e) {
-				printDebug("Exception in runServer(): " + e.getMessage());
-				e.printStackTrace();
-			}
-		}
+        }
+        catch(NullPointerException e) {
+            System.out.println(" MD.listen NPE ");
+            e.printStackTrace();
+            exit = false;
+        }
+        catch(Exception e) {
+            System.out.println(" MD.listen E ");
+            e.printStackTrace();
+            exit = false;
+        }
 		
 		if(exit) {
             stopServer();
