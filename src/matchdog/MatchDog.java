@@ -217,11 +217,11 @@ public class MatchDog extends Thread implements PrintableStreamSource {
                     writer = fibsout;
                     outputName = "fibsout";
                 } else if (line.equals("6")) {
-                    writer = bgsocket.out;
+                    writer = bgsocket.getOutput();
                     outputName = "bgsocket.out";
                 } else if (line.equals("8")) {
                     if (fibs.lastboard != null) {
-                        bgsocket.out.printf("%s", fibs.lastboard.trim() + "\r\n");
+                        bgsocket.getOutput().printf("%s", fibs.lastboard.trim() + "\r\n");
                     }
                     continue;
                 } else if (line.equals("16")) {
@@ -373,13 +373,10 @@ public class MatchDog extends Thread implements PrintableStreamSource {
         stopGnubg();
         keepalivetimertask.cancel();
         fibs.terminate();
-        if(gnubg == null && bgsocket == null) {
-            systemPrinter.printDebugln("waiting fibs 0");
-            while(fibs != null || !fibs.dead) {}
-        } else {
-            systemPrinter.printDebugln("waiting fibs 1");
-            while(!(bgsocket.dead && gnubg.dead && (fibs == null || fibs.dead))) {}
-        }
+
+        systemPrinter.printDebugln("waiting fibs 0");
+        while(fibs != null) {}
+
         systemPrinter.printDebugln("Exiting MatchDog Server");
         systemPrinter.printDebugln("bye");
         systemPrinter.printDebugln("", "");
@@ -414,10 +411,9 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 	}
 	
 	protected synchronized void restartFibs() {
-		fibs.terminate();
 
+        fibs.terminate();
 		try {
-			
 			while(fibs != null) {
 				printDebug("Waiting for fibs to quit");
 				this.wait();
@@ -431,46 +427,14 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 
 
 	protected void initGnuBg() {
+        systemPrinter.printDebugln("Initialising gnubg...");
+        gnubg = new BGRunner(getGnuBgCmdArr(), this);
 
-        systemPrinter.printDebugln("Initialising gnubg");
-        gnubg = new BGRunner(getGnuBgCmdArr(), this, prefs.getGnuBgPort());
-        gnubg.start();
-
-        systemPrinter.printDebugln("Waiting for gnubg ");
-        synchronized (lock) {
-            try {
-                while (!gnubg.init) {
-                    lock.wait();
-                }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        if(!gnubg.connect()) {
+            stopServer();
+            return;
         }
-		systemPrinter.printDebugln("gnubg running");
-
-		gnubgos = gnubg.p.getOutputStream();	
-		gnubgout = new PrintWriter(gnubgos, true);
-		
-		int checkquerply = prefs.getCheckquerply();
-		int cubedecply = prefs.getCubedecply();
-		gnubgout.println("show version");
-		
-		gnubgout.println("set eval sameasanalysis off");
-		
-		if(prefs.getMaxml() == 1) {
-			gnubgout.println("set evaluation chequer eval cubeful off");
-		}
-		gnubgout.println("set threads 8");
-		gnubgout.println("set evaluation chequer eval plies " + checkquerply);
-		gnubgout.println("set evaluation cubedecision eval plies " + cubedecply);
-		
-		for(int i = 0; i < 10; i++) {
-			gnubgout.println("set evaluation movefilter " + prefs.getMoveFilter(i) );
-			printDebug(prefs.getMoveFilter(i));
-		}
-		
-		gnubgout.println("external localhost:" + prefs.getGnuBgPort());
-		
+        gnubg.run();
 	}
 
 	protected void stopGnubg() {
@@ -485,19 +449,12 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 		bgsocket = new BGSocket(this);
 		systemPrinter.printDebugln("Connecting bg socket");
 		bgsocket.connect();
-		bgsocket.start();
 	}
 	
 	protected void stopBgSocket() {
 		if(bgsocket == null)
 			return;
-		try {
-			bgsocket.s.close();
-			bgsocket.terminate();	
-		} catch (IOException e) {
-
-			e.printStackTrace();
-		}
+        bgsocket.terminate();
         systemPrinter.printDebugln("Socket terminated");
 		
 	}
@@ -506,7 +463,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 		fibsout.println("b");
 		printDebug("Resending last board: " + fibs.lastboard);
 		fibs.sleepFibs(600);
-		bgsocket.out.printf("%s", fibs.lastboard.trim() + "\r\n");
+		bgsocket.getOutput().printf("%s", fibs.lastboard.trim() + "\r\n");
 	}
 
 	protected void initPlayerStats() {
@@ -796,5 +753,13 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 	public Collection<PrintStream> getPrintStreams() {
 		return listeners.values();
 	}
+
+    static void _sleep(long millis) {
+        try {
+            MatchDog.sleep(millis);
+        } catch (InterruptedException e) {
+            return;
+        }
+    }
 
 }

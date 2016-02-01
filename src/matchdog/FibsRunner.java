@@ -451,7 +451,7 @@ public class FibsRunner extends Thread {
 			}
 			if(resendlastboard) {
 				resendlastboard = false;
-				server.bgsocket.println(in);
+				server.bgsocket.execBoard(in);
 			}
 		}
 	
@@ -1270,7 +1270,7 @@ public class FibsRunner extends Thread {
 			match.setOwnResignInProgress(false);
 			server.printDebug("Resignation rejected by opp");
 			wMoveBoard = true;
-			server.bgsocket.println(lastboard);
+			server.bgsocket.execBoard(lastboard);
 			return;
 		}
 		//// END:HANDLE OWN RESIGN REJECTED
@@ -1304,29 +1304,30 @@ public class FibsRunner extends Thread {
 			}
 			
 			//// GET EQUITITES
-			server.bgsocket.setEvalcmd(true);
+			//server.bgsocket.setEvalcmd(true);
 			server.printDebug("EXTRA get equities -> lastboard: " + lastboard);
 			String eqboard = "";
 			if(!match.isShiftmove()) {
 				String [] split = lastboard.split(":");
 				split[42] = "1";
+                boolean first = true;
 
-				for(int i = 0; i < split.length; i++) eqboard += split[i] + ":";
+				for(int i = 0; i < split.length; i++) {
+                    if(first) {
+                        first = false;
+                    } else {
+                        eqboard += ":";
+                    }
+                    eqboard += split[i];
+                }
 			} else {
 				eqboard = lastboard;
 			}
 			server.printDebug("EXTRA get equities -> eqboard?: " + eqboard);
 			
-			server.bgsocket.wMonitor = true;
-			server.bgsocket.println("evaluation fibsboard " + lastboard + " PLIES 3 CUBE ON CUBEFUL");
-			
-			try {
-				synchronized (this) {
-					while(server.bgsocket.isEvalcmd()) this.wait();
-				}
-			} catch(Exception e) {
-				server.printDebug("EXTRA get equities -> exception: " + e.getMessage());
-			}
+			//server.bgsocket.wMonitor = true;
+			server.bgsocket.execEval(lastboard);
+
 			server.printDebug("EXTRA get equities finished");
 			
 			// OPP RESIGN NORMAL
@@ -1455,7 +1456,7 @@ public class FibsRunner extends Thread {
 						match.setTurn(new int[] { 0, 1 });
 					}
 					match.setRound(match.getRound() + 1);
-					server.bgsocket.println(in);
+					server.bgsocket.execBoard(in);
 					return;
 				}
 
@@ -1480,15 +1481,9 @@ public class FibsRunner extends Thread {
 					match.setRound(match.getRound() + 1);*/
 					
 					//// GET EQUITITES
-					server.bgsocket.setEvalcmd(true);
-					server.bgsocket.println("evaluation fibsboard " + in + " PLIES " 
-							+ "3 CUBE ON CUBEFUL");
-					
-					while(server.bgsocket.isEvalcmd()) {
-						try {
-							FibsRunner.sleep(100);
-						} catch(InterruptedException e) {}
-					}
+					//server.bgsocket.setEvalcmd(true);
+					server.bgsocket.execEval(in);
+
 					
 					//// RESIGN ////					
 					if(match.getMl() == 1) {
@@ -1532,7 +1527,7 @@ public class FibsRunner extends Thread {
 					} //// END: RESIGN ////
 					
 					wMoveBoard = true;
-					server.bgsocket.println(in);
+					server.bgsocket.execBoard(in);
 					return;
 				}
 				
@@ -1631,7 +1626,7 @@ public class FibsRunner extends Thread {
 								+ match.getMl() + " score: " + getScore(in)[0]
 								+ " " + getScore(in)[1] + " crawford: "
 								+ match.isCrawford() + "]");
-						server.bgsocket.println(in);
+						server.bgsocket.execBoard(in);
 
 					} else {
 						server.printDebug("NOT sending. [candouble: "
@@ -1666,7 +1661,7 @@ public class FibsRunner extends Thread {
 				if (in.startsWith("board:") && wOppDoubleBoard) {
 					server.printDebug("got OPP double board, sending to bgsocket");
 					wOppDoubleBoard = false;
-					server.bgsocket.println(in);
+					server.bgsocket.execBoard(in);
 				}
 			}
 		} //// END: PROCESS TURN
@@ -1994,8 +1989,6 @@ public class FibsRunner extends Thread {
 		int rcube = Integer.parseInt(split[37]);
 		match.setCube(rcube);
 	}
- 
-
 
 	public void getSavedMatches() {
 		getSavedMatches = true;

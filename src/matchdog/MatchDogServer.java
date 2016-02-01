@@ -215,7 +215,7 @@ public class MatchDogServer {
 		};		
 		players.put(3, new PlayerPrefs(prefs));
 		prefs = new Object [] {
-				"MatchDog", "malako",
+				"MatchDog", "pikoM",
 				true, true, true,
 				true, true, 15,
 				100, -22000,

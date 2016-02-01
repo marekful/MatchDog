@@ -1,106 +1,99 @@
 package matchdog;
-import java.io.*;
-
-import jcons.src.com.meyling.console.ConsoleBackgroundColor;
-import jcons.src.com.meyling.console.ConsoleFactory;
-import jcons.src.com.meyling.console.ConsoleForegroundColor;
 import jcons.src.com.meyling.console.UnixConsole;
-import jcons.src.com.meyling.console.Console;
 
-public class BGRunner extends Thread {
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+
+public class BGRunner  {
 	
-	Process p;
-	boolean init, isExternal, run, dead;
-	String[] command;
-	MatchDog server;
-	BufferedDebugPrinter printer;
-	String player0, player1;
-	String lastMoveStr;
-	int port;
-	
-	
-	BGRunner(String[] command, MatchDog server, int port) {
-		super("BGThred");
+	private Process p;
+	private String[] command;
+	private MatchDog server;
+	private BufferedDebugPrinter printer;
+
+    private BufferedReader input;
+    private PrintWriter output;
+
+	BGRunner(String[] command, MatchDog server) {
 		p = null;
-		init = false;
-		isExternal = false;
 		this.command = command;
 		this.server = server;
-		//player0 = server.gnubgp0;
-		//player1 = server.gnubgp1;
-		lastMoveStr = "";
-		setName("BGRunner");
-		dead = false;
-		this.port = port;
 		printer = new BufferedDebugPrinter(
 			server, "gnubg:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_BLUE
 		);
 	}
 
-	@Override
-	public void run() {
-		run = true;
-
-
-        for(String cmd : command) {
+	public boolean connect() {
+        for (String cmd : command) {
             try {
-                server.systemPrinter.printDebugln("Trying to launch gnubg" );
+                printer.printDebugln("Trying to launch gnubg binary");
                 p = Runtime.getRuntime().exec(cmd);
-
+                printer.printDebugln("gnubg running (" + cmd + ")");
                 break;
             } catch (Exception e) {
-                server.systemPrinter.printDebugln("gnubg not found at: " + cmd);
+                printer.printDebugln("gnubg not found at: " + cmd);
             }
         }
 
-        if(p == null) {
-            server.systemPrinter.printDebugln("Couldn't launch gnubg, exiting...");
-            server.stopServer();
-            return;
+        if (p == null) {
+            printer.printDebugln("Couldn't launch gnubg, exiting...");
+            return false;
         }
 
-        BufferedReader input = new BufferedReader(new InputStreamReader(p
-                .getInputStream()));
+        input = new BufferedReader(new InputStreamReader(p.getInputStream()));
+        output = new PrintWriter(p.getOutputStream(), true);
 
-        try {
-			init = true;
-			synchronized(MatchDog.lock) {
-                MatchDog.lock.notify();
-			}
+        return true;
+    }
 
-            String line;
-            while ((line = input.readLine()) != null && run) {
-				
-				if(line.startsWith("Waiting for a connection")) {
-					isExternal = true;
-					//synchronized(server.bgsocket) {
-					//	server.bgsocket.notify();
-					//}
-				}
-				
-				printer.printDebugln(line);
-				//outbuffer.put(outbuffer.size(), line);
-				
-				//init = true;
-				
-			}
-			input.close();
-		} catch (Exception err) {
-			server.systemPrinter.printDebugln("BGRunner(run): " + err);
-			//err.printStackTrace();
-		}
+    public void run() {
 
-		server.systemPrinter.printDebugln("Exiting BGRunner thread");
-		dead = true;
+        int checkquerply = server.prefs.getCheckquerply();
+        int cubedecply = server.prefs.getCubedecply();
+        println("show version");
+
+        println("set eval sameasanalysis off");
+
+        if(server.prefs.getMaxml() == 1) {
+            println("set evaluation chequer eval cubeful off");
+        }
+        println("set threads 8");
+        println("set evaluation chequer eval plies " + checkquerply);
+        println("set evaluation cubedecision eval plies " + cubedecply);
+
+        for(int i = 0; i < 10; i++) {
+            println("set evaluation movefilter " + server.prefs.getMoveFilter(i) );
+            server.printDebug(server.prefs.getMoveFilter(i));
+        }
+
+        println("external localhost:" + server.prefs.getGnuBgPort());
 	}
 
 	public void terminate() {
-		server.gnubgout.println("quit");
-		this.run = false;
+		println("quit");
 		p.destroy();
 	}
 
-	public void setPort(int port) {
-		this.port = port;
-	}
+    private void println(String str) {
+        output.println(str);
+        try {
+            MatchDog.sleep(8);
+        } catch (InterruptedException e) {
+            return;
+        }
+        processInput();
+    }
+
+    protected void processInput() {
+        try {
+            //server.printDebug(" p.avail: " + input.ready());
+            while((input.ready())) {
+                printer.printDebugln(input.readLine());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

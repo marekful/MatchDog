@@ -2,110 +2,49 @@ package matchdog;
 
 import java.io.*;
 import java.net.*;
-import java.util.Scanner;
+
 import jcons.src.com.meyling.console.UnixConsole;
 
-public class BGSocket extends Thread  {
-	InetAddress sa = null;
-	Socket s = null;
-	InputStream sin = null;
-	OutputStream sout = null;
-	BufferedReader in;
-	PrintWriter out;
-	MatchDog server;
-	BufferedDebugPrinter printer;
-	boolean busy, run, connected, dead, evalcmd, wMonitor;
+public class BGSocket  {
 
-	long sockettime, replytime;
-	
-	String line = "";
+    private Socket s = null;
+
+    private BufferedReader input;
+    private PrintWriter output;
+
+    private MatchDog server;
+    protected BufferedDebugPrinter printer;
+	private boolean busy, connected, evalcmd;
 	
 	BGSocket(MatchDog server) {
 			
 		this.server = server;
-		wMonitor = false;
 		busy = false;
 		connected = false;
-		dead = false;
 		evalcmd = false;
-		setName("BGSocket");
+
 		printer = new BufferedDebugPrinter(
 			server, "gnubg-external:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_BLUE
 		);
 	}
 
-	@Override
-	public void run() {
-		run = true;
-		try {
-			synchronized(MatchDog.lock) {
-                MatchDog.lock.notify();
-			}
-			while(( line = in.readLine()) != null && run) {
-	
-				if(!line.startsWith("Error")){
-					processReply();
-				} else {
-					busy = false;
-					server.printDebug(" --**--> GNUBG ERROR: ");
-					server.printDebug(line);
-					
-				}
-			}
-			sin.close();
-			sout.close();
-			in.close();
-			out.close();
-		} catch (IOException e) {
+    public void execBoard(String board) {
+        printer.printDebugln("sending BOARD STATE... ");
+        execCommand(board);
+    }
 
-            server.systemPrinter.printDebugln(e.toString());
-		}
-		server.systemPrinter.printDebugln("Exiting BGSocket thread");
-		dead = true;
-	}
-	
+    public void execEval(String board) {
+        printer.printDebugln("sending EVALUATION CMD... ");
+        setEvalcmd(true);
+        execCommand("evaluation fibsboard " + board + " PLIES 3 CUBE ON CUBEFUL");
+        setEvalcmd(false);
+    }
 
-	/*private void printDebug(String msg, PrintStream os) {
-		printDebug(msg, os, getDebugLabel());
-	}
-	
-	private void printDebug(String msg) {
-		for(PrintStream os : server.listeners.values()) {
-			printDebug(msg, os);
-		}
-	}
-	
-	protected void printDebugln(String msg, PrintStream os) {
-		os.println();
-		printDebug(msg, os);
-	}
-	
-	protected void printDebugln(String msg) {
-		for(PrintStream os : server.listeners.values()) {
-			printDebugln(msg, os);
-		}
-	}
-	
-	protected void printDebug(String msg, PrintStream os, String label) {
-		os.print(UnixConsole.BLACK);
-		os.print(UnixConsole.BACKGROUND_WHITE);
-		os.print(label);
-		os.print(UnixConsole.RESET + " ");
-		os.print(msg);
-		os.flush();
-	}
-	
-	protected void printDebug(String msg, String label) {
-		for(PrintStream os : server.listeners.values()) {
-			printDebug(msg, os, label);
-		}
-	}
-	
-	private String getDebugLabel() {
-		return "gnubgextrnal:";
-	}*/
+    private void execCommand(String lineIn) {
 
-	public synchronized void println(String lineIn) {
+        long sockettime, replytime;
+        double replydiff;
+        String unit, rawReply, reply;
 
 		if(busy) {
 			// FIXME
@@ -118,85 +57,87 @@ public class BGSocket extends Thread  {
 		busy = true;
 		
 		if(lineIn.trim().equals("")) {
-			printer.printDebugln("*** !! *** NOT SENDING empty line");
-			return;
-		}
-		
-		if(isEvalcmd()) {
-			
-			printer.printDebugln("sending EVALUATION CMD... ");	
-		} else {
-			printer.printDebugln("sending BOARD STATE... ");	
-		}
-		
+            printer.printDebugln("*** !! *** NOT SENDING empty line");
+            return;
+        }
+
 		sockettime = System.nanoTime();
-		out.printf("%s", lineIn.trim() + "\r\n");
+		output.printf("%s", lineIn.trim() + "\r\n");
 
 		printer.printDebug("(" + ((System.nanoTime() - sockettime) / 1000000.0) + " ms) OK, waiting for reply", "");
 		replytime = System.nanoTime();
+
+        try {
+            rawReply = input.readLine();
+        } catch (IOException e) {
+            server.systemPrinter.printDebugln("Exception reading from gnubg external: " + e.getMessage());
+            return;
+        }
+
+        if((replydiff = (System.nanoTime() - replytime) / 1000000000.0) < 0.001) {
+            replydiff *= 1000;
+            unit = " ms";
+        } else {
+            unit = " seconds";
+        }
+
+        if(rawReply.startsWith("Error:")) {
+            server.printDebug(" --**--> GNUBG ERROR: ");
+            server.printDebug(rawReply);
+            busy = false;
+            return;
+        }
+
+        if(isEvalcmd()) {
+            parseEquities(rawReply);
+            printer.printDebugln("gnubg EQUITIES (in "
+                    + replydiff + unit
+                    + "): " + rawReply);
+
+        } else {
+            reply = processReply(rawReply);
+            printer.printDebugln("gnubg says (in "
+                    + replydiff + unit
+                    + "): " + rawReply);
+
+            server.fibs.sleepFibs(100);
+            server.fibsout.println(reply);
+            printer.printDebugln("sent to fibs: ");
+            server.fibs.printFibsCommand(reply);
+            printer.printDebugln("");
+            server.fibs.printMatchInfo();
+        }
+
+        busy = false;
 	}
 	
-	synchronized void processReply() {
+	private String processReply(String line) {
 
-		double replydiff = 0.0;
-		String unit = "";
-	
-		if((replydiff = (System.nanoTime() - replytime) / 1000000000.0) < 0.001) {
-			replydiff *= 1000;
-			unit = " ms";	
-		} else {
-			unit = " seconds";
-		}
-		
 		if(isEvalcmd()) {
-
-			printer.printDebugln("gnubg EQUITIES (in " 
-					+ replydiff + unit 
-					+ "): " + line);
-			
-			parseEquities(line);
-			setEvalcmd(false);
-
-			if(wMonitor) {
-				wMonitor = false;
-				synchronized (server.fibs) {
-					server.fibs.notify();
-				}
-			}
-			busy = false;
-			return;
-		} else {
-			printer.printDebugln("gnubg says (in "
-					+ replydiff + unit 
-					+ "): " + line);
+			return line;
 		}
-		
-		String fibscommand =  line.replace("25", "bar").
-								  replace("/0", "/off").
-								  replace("/", "-").
-								  replace("*", "").
-								  replace("take", "accept").
-								  replace("drop", "reject");
-		if(server.fibsmode == 2) {
-			if(fibscommand.contains("-")) {
-				
-				if(server.fibs.match.isShiftmove()) {
-					fibscommand = shift(fibscommand);
-				}
-				
-				fibscommand = "move " + fibscommand;
 
-			}
-			server.fibs.sleepFibs(100);
-			server.fibsout.println(fibscommand);
-			printer.printDebugln("sent to fibs: ");
-			server.fibs.printFibsCommand(fibscommand);
-			printer.printDebugln("");
-			server.fibs.printMatchInfo();
-				
-		}
-		busy = false;		
+        return transformCommand(line);
 	}
+
+    private String transformCommand(String in) {
+
+        String out = in.replace("25", "bar").
+                replace("/0", "/off").
+                replace("/", "-").
+                replace("*", "").
+                replace("take", "accept").
+                replace("drop", "reject");
+
+        if(out.contains("-")) {
+
+            if(server.fibs.match.isShiftmove()) {
+                out = shift(out);
+            }
+            out = "move " + out;
+        }
+       return out;
+    }
 
 	private void parseEquities(String in) {
 		
@@ -207,15 +148,10 @@ public class BGSocket extends Thread  {
 		// non expected reply is sent from gnubg.
 		if(in.startsWith("roll") || in.startsWith("double") || in.contains("/") || in.equals("")) {
 			printer.printDebugln("*** !! BUG parseEquities: " + in);
-			/*server.fibs.match.equities[0] = .5;
-			server.fibs.match.equities[1] = .5;
-			server.fibs.match.equities[2] = .5;
-			server.fibs.match.equities[3] = .0;
-			server.fibs.match.equities[4] = .0;*/
 			return;
 		}
 
-		String [] split0 = line.split(" ");
+		String [] split0 = in.split(" ");
 		for(int i = 0; i < 6; i++) {
 			if(!split0[i].equals("")) {
 				server.fibs.match.equities[i] = Double.parseDouble(split0[i]);
@@ -263,36 +199,45 @@ public class BGSocket extends Thread  {
 		
 		while(!connected) {
 			try {
-				BGSocket.sleep(100);
-				sa = InetAddress.getByName("localhost");
+				MatchDog.sleep(100);
+				InetAddress sa = InetAddress.getByName("localhost");
 				s = new Socket(sa, server.prefs.getGnuBgPort());
 				if(s.isConnected()) {
 					server.systemPrinter.printDebugln("Successfully connected to bg socket");
-					connected = true;					
+					connected = true;
+                    server.gnubg.processInput();
 				}
-				sin = s.getInputStream();
-				sout = s.getOutputStream();	
-				in = new BufferedReader(new InputStreamReader(sin ));
-				out = new PrintWriter(sout, true);	
+				input = new BufferedReader(new InputStreamReader(s.getInputStream()));
+				output = new PrintWriter(s.getOutputStream(), true);
 				
 			} catch(InterruptedException e) {
 				return;
 			} catch(Exception e) {
-				server.systemPrinter.printDebugln("Exception in BGSocket.connect(): " + e.getMessage() + ", retrying...");
+				server.systemPrinter.printDebugln(
+                        "Exception in BGSocket.connect(): " + e.getMessage() + ", retrying..."
+                );
 			}
 		}
 	}	
 	
 	public void terminate() {
-		this.run = false;
+        try {
+            s.close();
+        } catch (IOException e) {
+            server.systemPrinter.printDebugln("Exception in BGSocket.terminate():" + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
-	}
-
-	public synchronized boolean isEvalcmd() {
+	private boolean isEvalcmd() {
 		return evalcmd;
 	}
 
-	public synchronized void setEvalcmd(boolean evalcmd) {
+	private void setEvalcmd(boolean evalcmd) {
 		this.evalcmd = evalcmd;
 	}
+
+    public PrintWriter getOutput() {
+        return output;
+    }
 }
