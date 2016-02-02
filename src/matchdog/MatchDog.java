@@ -17,7 +17,6 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 	PrintWriter gnubgout;
 	OutputStream fibsos;
 	PrintWriter fibsout, writer;
-	BGSocket bgsocket;
 	Inviter inviter;
 	PlayerPrefs prefs;
 	Map<Integer, String> savedMatches;
@@ -100,8 +99,6 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 			} else {
 
 				initGnuBg();
-				
-				initBgSocket();
 				
 				initPlayerStats();
 				statview = new StatWriter(this);
@@ -211,17 +208,17 @@ public class MatchDog extends Thread implements PrintableStreamSource {
                 }
 
                 if (line.equals("2")) {
-                    writer = gnubgout;
+                    writer = gnubg.getProcOut();
                     outputName = "gnubgout";
                 } else if (line.equals("1")) {
                     writer = fibsout;
                     outputName = "fibsout";
                 } else if (line.equals("6")) {
-                    writer = bgsocket.getOutput();
+                    writer = gnubg.getScokOut();
                     outputName = "bgsocket.out";
                 } else if (line.equals("8")) {
                     if (fibs.lastboard != null) {
-                        bgsocket.getOutput().printf("%s", fibs.lastboard.trim() + "\r\n");
+                        gnubg.getScokOut().printf("%s", fibs.lastboard.trim() + "\r\n");
                     }
                     continue;
                 } else if (line.equals("16")) {
@@ -369,7 +366,6 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 
     protected void stopServer() {
         stopInviter();
-        stopBgSocket();
         stopGnubg();
         keepalivetimertask.cancel();
         fibs.terminate();
@@ -430,11 +426,13 @@ public class MatchDog extends Thread implements PrintableStreamSource {
         systemPrinter.printDebugln("Initialising gnubg...");
         gnubg = new BGRunner(getGnuBgCmdArr(), this);
 
-        if(!gnubg.connect()) {
+        if(!gnubg.launch()) {
             stopServer();
             return;
         }
-        gnubg.run();
+        gnubg.setup();
+
+        gnubg.connectSocket();
 	}
 
 	protected void stopGnubg() {
@@ -444,26 +442,11 @@ public class MatchDog extends Thread implements PrintableStreamSource {
         systemPrinter.printDebugln("Gnubg terminated");
 	}
 	
-	protected void initBgSocket() {
-		systemPrinter.printDebugln("Initialising bg socket");
-		bgsocket = new BGSocket(this);
-		systemPrinter.printDebugln("Connecting bg socket");
-		bgsocket.connect();
-	}
-	
-	protected void stopBgSocket() {
-		if(bgsocket == null)
-			return;
-        bgsocket.terminate();
-        systemPrinter.printDebugln("Socket terminated");
-		
-	}
-	
 	protected void resendLastBoard() {
 		fibsout.println("b");
 		printDebug("Resending last board: " + fibs.lastboard);
 		fibs.sleepFibs(600);
-		bgsocket.getOutput().printf("%s", fibs.lastboard.trim() + "\r\n");
+		gnubg.getScokOut().printf("%s", fibs.lastboard.trim() + "\r\n");
 	}
 
 	protected void initPlayerStats() {
@@ -616,7 +599,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
         fibs.printer.setSuspended(output, true);
         systemPrinter.setSuspended(output, true);
         printer.setSuspended(output, true);
-        bgsocket.printer.setSuspended(output, true);
+        gnubg.s_printer.setSuspended(output, true);
         fibs.matchinfoPrinter.setSuspended(output, true);
     }
 
@@ -624,7 +607,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
         fibs.printer.setSuspended(output, false);
         systemPrinter.setSuspended(output, false);
         printer.setSuspended(output, false);
-        bgsocket.printer.setSuspended(output, false);
+        gnubg.s_printer.setSuspended(output, false);
         fibs.matchinfoPrinter.setSuspended(output, false);
     }
 

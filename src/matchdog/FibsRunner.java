@@ -451,7 +451,7 @@ public class FibsRunner extends Thread {
 			}
 			if(resendlastboard) {
 				resendlastboard = false;
-				server.bgsocket.execBoard(in);
+				server.gnubg.execBoard(in);
 			}
 		}
 	
@@ -1270,7 +1270,7 @@ public class FibsRunner extends Thread {
 			match.setOwnResignInProgress(false);
 			server.printDebug("Resignation rejected by opp");
 			wMoveBoard = true;
-			server.bgsocket.execBoard(lastboard);
+			server.gnubg.execBoard(lastboard);
 			return;
 		}
 		//// END:HANDLE OWN RESIGN REJECTED
@@ -1326,7 +1326,7 @@ public class FibsRunner extends Thread {
 			server.printDebug("EXTRA get equities -> eqboard?: " + eqboard);
 			
 			//server.bgsocket.wMonitor = true;
-			server.bgsocket.execEval(lastboard);
+			server.gnubg.execEval(lastboard);
 
 			server.printDebug("EXTRA get equities finished");
 			
@@ -1456,7 +1456,7 @@ public class FibsRunner extends Thread {
 						match.setTurn(new int[] { 0, 1 });
 					}
 					match.setRound(match.getRound() + 1);
-					server.bgsocket.execBoard(in);
+					server.gnubg.execBoard(in);
 					return;
 				}
 
@@ -1482,7 +1482,7 @@ public class FibsRunner extends Thread {
 					
 					//// GET EQUITITES
 					//server.bgsocket.setEvalcmd(true);
-					server.bgsocket.execEval(in);
+					server.gnubg.execEval(in);
 
 					
 					//// RESIGN ////					
@@ -1527,7 +1527,7 @@ public class FibsRunner extends Thread {
 					} //// END: RESIGN ////
 					
 					wMoveBoard = true;
-					server.bgsocket.execBoard(in);
+					server.gnubg.execBoard(in);
 					return;
 				}
 				
@@ -1626,7 +1626,7 @@ public class FibsRunner extends Thread {
 								+ match.getMl() + " score: " + getScore(in)[0]
 								+ " " + getScore(in)[1] + " crawford: "
 								+ match.isCrawford() + "]");
-						server.bgsocket.execBoard(in);
+						server.gnubg.execBoard(in);
 
 					} else {
 						server.printDebug("NOT sending. [candouble: "
@@ -1661,7 +1661,7 @@ public class FibsRunner extends Thread {
 				if (in.startsWith("board:") && wOppDoubleBoard) {
 					server.printDebug("got OPP double board, sending to bgsocket");
 					wOppDoubleBoard = false;
-					server.bgsocket.execBoard(in);
+					server.gnubg.execBoard(in);
 				}
 			}
 		} //// END: PROCESS TURN
