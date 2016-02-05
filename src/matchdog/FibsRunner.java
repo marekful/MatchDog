@@ -1434,8 +1434,8 @@ public class FibsRunner extends Thread {
 						match.setCrawford(false);
 						match.setPostcrawford(true);
 						// does this work??
-						server.gnubgout.println("set crawford off");
-						server.printDebug("setting CRAWFORD OFF");
+						//server.gnubgout.println("set crawford off");
+						//server.printDebug("setting CRAWFORD OFF");
 					}
 				} else {
 					server.printDebug("NOT setting CRAWFORD");
@@ -1509,7 +1509,7 @@ public class FibsRunner extends Thread {
 							}
 						}
 						
-						if(match.equities[0] == 0.0 && match.equities[4] > 0.99) {
+						if(match.equities[0] == 0.0 && match.equities[4] == 1.0) {
 							server.printDebug("**** !!! RESIGNING NON-1-ptr match -- BACKGAMMON");
 							sleepFibs(200);
 							match.setOwnResignInProgress(true);
@@ -1740,6 +1740,9 @@ public class FibsRunner extends Thread {
 	}
 
 	private void stopMatch() {
+
+        match.setFinished(true);
+        match.purgeStampTimer();
 		
 		sleepFibs(200);
 		server.fibsout.println("toggle r");
@@ -1748,8 +1751,7 @@ public class FibsRunner extends Thread {
 			removeSavedMatch(match.getPlayer1());
 		
 		match.setWaitRateCalc(false);
-		
-		match.purgeStampTimer(); 
+
 		String star, score; // = (match.isDropping()) ? "*" : "";
 		int rounds;	
 		
@@ -2102,21 +2104,22 @@ public class FibsRunner extends Thread {
 				server.fibsout.println("leave");
 			}
 		}
-		
+
+        if(server.fibsout != null && !s.isOutputShutdown()) {
+            server.fibsout.println("logout");
+            server.printDebug("Terminating FibsRunner: sent 'logout'");
+        }
+
 		PrintWriter _fibsout = server.fibsout;
 		OutputStream _fibsos = server.fibsos;
-		
+
 		server.fibsout = null;
 		server.fibsos = null;
 		server.fibs = null;
 		
-		synchronized (server) {
-			server.notify();
+		synchronized (MatchDog.lock) {
+			MatchDog.lock.notify();
 		}
-		/*if(server.fibsout != null && s.isOutputShutdown() == false) {
-			server.fibsout.println("logout");
-			server.printDebug("Terminating FibsRunner: sent 'logout'");
-		}*/
 		
 		try {
 			s.shutdownInput();

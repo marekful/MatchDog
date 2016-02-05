@@ -61,6 +61,12 @@ public class GnubgResponse implements Runnable {
 
         } else {
             reply = processReply(rawReply);
+
+            if(server.fibs.match == null || server.fibs.match.isFinished()) {
+                printer.printDebugln("*!* NOT SENDING to FIBS -> match finished");
+                return;
+            }
+
             printer.printDebugln("gnubg says (in "
                     + replydiff + unit
                     + "): " + rawReply);
@@ -112,6 +118,11 @@ public class GnubgResponse implements Runnable {
         // non expected reply is sent from gnubg.
         if(in.startsWith("roll") || in.startsWith("double") || in.contains("/") || in.equals("")) {
             printer.printDebugln("*** !! BUG parseEquities: " + in);
+            return;
+        }
+
+        if(server.fibs.match == null) {
+            printer.printDebugln("*!* NOT PARSING EQUITIES -> match == null");
             return;
         }
 

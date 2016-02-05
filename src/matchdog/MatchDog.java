@@ -4,6 +4,7 @@ import etc.TorExitNodeChecker;
 import jcons.src.com.meyling.console.UnixConsole;
 
 import java.io.*;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class MatchDog extends Thread implements PrintableStreamSource {
@@ -218,7 +219,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
                     outputName = "bgsocket.out";
                 } else if (line.equals("8")) {
                     if (fibs.lastboard != null) {
-                        gnubg.getScokOut().printf("%s", fibs.lastboard.trim() + "\r\n");
+                        gnubg.execBoard(fibs.lastboard.trim());
                     }
                     continue;
                 } else if (line.equals("16")) {
@@ -302,11 +303,13 @@ public class MatchDog extends Thread implements PrintableStreamSource {
                     restartFibs();
                     continue;
                 } else if (line.equals("uptime")) {
-                    output.print(serverStartedAt);
+                    output.print(TimeAgo.fromMs(System.currentTimeMillis() - serverStartedAt.getTime()));
                     output.println();
                     continue;
                 } else if (line.equals("stat")) {
-                    output.print("started at " + serverStartedAt + " match# "
+                    output.print("started "
+                            + TimeAgo.fromMs(System.currentTimeMillis() - serverStartedAt.getTime())
+                            + "ago | match# "
                             + matchCount + " fibs# " + fibsCount
                             + " pGP# " + fibs.procGPcounter);
                     output.println();
@@ -371,8 +374,15 @@ public class MatchDog extends Thread implements PrintableStreamSource {
         fibs.terminate();
 
         systemPrinter.printDebugln("waiting fibs 0");
-        while(fibs != null) {}
-
+        synchronized (lock) {
+            try {
+                while (fibs != null) {
+                    lock.wait();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
         systemPrinter.printDebugln("Exiting MatchDog Server");
         systemPrinter.printDebugln("bye");
         systemPrinter.printDebugln("", "");
@@ -380,6 +390,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
     }
 
 	private void initFibs() {
+
 		systemPrinter.printDebugln("Initialising fibs");
 		fibs = new FibsRunner(this, getFibsHost(), getFibsPort(), fibsCount);
 		
@@ -412,7 +423,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 		try {
 			while(fibs != null) {
 				printDebug("Waiting for fibs to quit");
-				this.wait();
+				lock.wait();
 			}
 			
 		} catch(Exception e) {
@@ -446,7 +457,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 		fibsout.println("b");
 		printDebug("Resending last board: " + fibs.lastboard);
 		fibs.sleepFibs(600);
-		gnubg.getScokOut().printf("%s", fibs.lastboard.trim() + "\r\n");
+		gnubg.execBoard(fibs.lastboard.trim());
 	}
 
 	protected void initPlayerStats() {
@@ -559,17 +570,16 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 				}
 				
 				try {
-					printDebug("KeepAlive");
 					printDebug("KeepAlive(" + keepalivetimer.hashCode() + ") " 
 							+ fibs.s.isInputShutdown() + " - " + fibs.s.isOutputShutdown() + " - "
 							+ fibs.terminating + " | last fibsline: " + fibs.getFibsLastLineSecondsAgo() + " sec"
 							+ " | started: " + ((new Date()).getTime() - firstRun.getTime()) / 1000 + " sec ago");
 					
-					if(fibs.terminating == true) {
+					if(fibs.terminating) {
 						return;
 					}
 					
-					if(fibs.getFibsLastLineSecondsAgo() > FibsRunner.timoutSeconds && fibs.init == true) {
+					if(fibs.getFibsLastLineSecondsAgo() > FibsRunner.timoutSeconds && fibs.init) {
 						printDebug(" *** No line from fibs for " + FibsRunner.timoutSeconds + " seconds, RESTARTING ***");
 						restartFibs();
 					}
@@ -584,15 +594,12 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 		keepalivetimer.schedule(keepalivetimertask, 48000L, 28000L);
 		
 		keepalivetimer.schedule(new TimerTask() {
-			
-			Date firstRun = null;
-			
 			@Override 
 			public void run() {
 				printDebug("KeepAlive+");
 				fibs.keepAlive();
 			}
-		}, 300000, 300000);
+		}, 300000L, 300000L);
 	}
 
     protected void suspendOutput(PrintStream output) {
@@ -736,13 +743,4 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 	public Collection<PrintStream> getPrintStreams() {
 		return listeners.values();
 	}
-
-    static void _sleep(long millis) {
-        try {
-            MatchDog.sleep(millis);
-        } catch (InterruptedException e) {
-            return;
-        }
-    }
-
 }

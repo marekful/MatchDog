@@ -30,7 +30,7 @@ public class Match {
 	TimerTask stamptimertask, waitfortimertask;
 	MatchDog server;
 	HashMap<Integer, String> chattexts;
-	boolean waitRateCalc;
+	boolean waitRateCalc, finished;
 	double ownRatingChange, oppRatingChange, oppRating, OwnRating;
 	int callcounter;
 	long gametime;
@@ -79,13 +79,14 @@ public class Match {
 		scorehistory = new HashMap<Integer, String>();
 		timehistory = new HashMap<Integer, Long>();
 		waitRateCalc = false;
+        finished = false;
 		ownRatingChange = 0.0;
 		oppRatingChange = 0.0;
 		oppRating = 0.0;
 		OwnRating = 0.0;
 		// <--
 		
-		equities = new double[6];
+		equities = new double[]{.5, .5, 0, 0, 0, .5};
 		
 		ownResignInProgress = false;
 		oppResignInProgress = false;
@@ -115,7 +116,6 @@ public class Match {
 		server.printDebug("PURGING STAMPTIMER: " + stamptimer.hashCode());
 		stamptimer.cancel();
 		stamptimer.purge();
-		return;
 	}
 	
 	private synchronized void checkStamps() {
@@ -397,9 +397,16 @@ public class Match {
 	public void setOwnResignInProgress(boolean ownResignInProgress) {
 		this.ownResignInProgress = ownResignInProgress;
 	}
-	
 
-	public boolean isOppResignInProgress() {
+    public boolean isFinished() {
+        return finished;
+    }
+
+    public void setFinished(boolean finished) {
+        this.finished = finished;
+    }
+
+    public boolean isOppResignInProgress() {
 		return oppResignInProgress;
 	}
 
