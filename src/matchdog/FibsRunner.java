@@ -1891,7 +1891,7 @@ public class FibsRunner extends Thread {
 							+ "'show stat' or 'show log' any time to get "
 							+ "overall statistics or a game level log of the "
 							+ s + " match(es) we played (since " 
-							+ server.playerstats.getSince(1) + ").");
+							+ server.playerstats.getByName(match.getPlayer1()).getFirstMatchDate() + ").");
 					}
 				}				
 			}

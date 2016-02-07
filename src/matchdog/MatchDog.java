@@ -307,9 +307,9 @@ public class MatchDog extends Thread implements PrintableStreamSource {
                     output.println();
                     continue;
                 } else if (line.equals("stat")) {
-                    output.print("started "
+                    output.print("uptime: "
                             + TimeAgo.fromMs(System.currentTimeMillis() - serverStartedAt.getTime())
-                            + "ago | match# "
+                            + " | match# "
                             + matchCount + " fibs# " + fibsCount
                             + " pGP# " + fibs.procGPcounter);
                     output.println();

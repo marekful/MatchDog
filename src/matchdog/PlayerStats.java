@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.TreeMap;
 
 
 /**
@@ -152,6 +153,11 @@ public class PlayerStats implements Serializable {
 				saved.dropresumedates.put(tmp, null);
 				saved.dropresumekey = tmp;
 			}
+		}
+
+		public Date getFirstMatchDate() {
+			TreeMap<Date, MatchLog> t = new TreeMap<Date, MatchLog>(history);
+			return t.entrySet().iterator().next().getKey();
 		}
 
 		private MatchLog getSaved() {
