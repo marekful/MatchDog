@@ -1302,14 +1302,14 @@ public class FibsRunner extends Thread {
 				//stopMatch();
 				return;
 			}
-			
+
 			//// GET EQUITITES
 			//server.bgsocket.setEvalcmd(true);
 			server.printDebug("EXTRA get equities -> lastboard: " + lastboard);
 			String eqboard = "";
 			if(!match.isShiftmove()) {
 				String [] split = lastboard.split(":");
-				split[42] = "1";
+				split[32] = "1";
                 boolean first = true;
 
 				for(int i = 0; i < split.length; i++) {
@@ -1326,7 +1326,7 @@ public class FibsRunner extends Thread {
 			server.printDebug("EXTRA get equities -> eqboard?: " + eqboard);
 			
 			//server.bgsocket.wMonitor = true;
-			server.gnubg.execEval(lastboard);
+			server.gnubg.execEval(eqboard);
 
 			server.printDebug("EXTRA get equities finished");
 			
