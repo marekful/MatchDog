@@ -44,7 +44,7 @@ public class BGRunner  {
         evalcmd = false;
 
         s_printer = new BufferedDebugPrinter(
-            server, "gnubg-external:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_BLUE
+            server, "gnubg:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_BLUE
         );
 	}
 

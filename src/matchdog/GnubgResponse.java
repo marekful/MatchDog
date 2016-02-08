@@ -28,7 +28,7 @@ public class GnubgResponse implements Runnable {
     @Override
     public void run() {
 
-        String rawReply, reply, unit;
+        String rawReply, fibsCommand, unit;
         long replytime;
         double replydiff;
 
@@ -55,26 +55,23 @@ public class GnubgResponse implements Runnable {
 
         if(isEvalcmd) {
             parseEquities(rawReply);
-            printer.printDebugln("gnubg EQUITIES (in "
-                    + replydiff + unit
-                    + "): " + rawReply);
+            printer.printDebugln("gnubg EQUITIES (in " + replydiff + unit + "): " + rawReply);
 
         } else {
-            reply = processReply(rawReply);
 
             if(server.fibs.match == null || server.fibs.match.isFinished()) {
                 printer.printDebugln("*!* NOT SENDING to FIBS -> match finished");
                 return;
             }
 
-            printer.printDebugln("gnubg says (in "
-                    + replydiff + unit
-                    + "): " + rawReply);
+            printer.printDebugln("gnubg says (in " + replydiff + unit + "): " + rawReply);
+
+            fibsCommand = processReply(rawReply);
 
             server.fibs.sleepFibs(100);
-            server.fibsout.println(reply);
+            server.fibsout.println(fibsCommand);
             printer.printDebugln("sent to fibs: ");
-            server.fibs.printFibsCommand(reply);
+            server.fibs.printFibsCommand(fibsCommand);
             printer.printDebugln("");
             server.fibs.printMatchInfo();
         }

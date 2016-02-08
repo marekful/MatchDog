@@ -4,7 +4,6 @@ import etc.TorExitNodeChecker;
 import jcons.src.com.meyling.console.UnixConsole;
 
 import java.io.*;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class MatchDog extends Thread implements PrintableStreamSource {
@@ -603,7 +602,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
 	}
 
     protected void suspendOutput(PrintStream output) {
-        fibs.printer.setSuspended(output, true);
+        fibs.linePrinter.setSuspended(output, true);
         systemPrinter.setSuspended(output, true);
         printer.setSuspended(output, true);
         gnubg.s_printer.setSuspended(output, true);
@@ -611,7 +610,7 @@ public class MatchDog extends Thread implements PrintableStreamSource {
     }
 
     protected void unSuspendOutput(PrintStream output) {
-        fibs.printer.setSuspended(output, false);
+        fibs.linePrinter.setSuspended(output, false);
         systemPrinter.setSuspended(output, false);
         printer.setSuspended(output, false);
         gnubg.s_printer.setSuspended(output, false);

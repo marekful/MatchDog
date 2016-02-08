@@ -43,7 +43,7 @@ public class FibsRunner extends Thread {
 	String host;
 	int port;
 	MatchDog server;
-	BufferedFibsDebugPrinter printer; 
+	BufferedFibsDebugPrinter linePrinter;
 	BufferedDebugPrinter matchinfoPrinter;
 	Match match, lastmatch;
 	String lastboard, filteredInput;
@@ -132,12 +132,12 @@ public class FibsRunner extends Thread {
 		
 		//final String pid = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
 		setName("FibsRunner-" + this.id);
-		
-		printer = new BufferedFibsDebugPrinter(
-			server, "fibs:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_GREEN
-		);
-		
-		matchinfoPrinter = new BufferedDebugPrinter(
+
+        linePrinter = new BufferedFibsDebugPrinter(
+            server, "fibs:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_GREEN
+        );
+
+        matchinfoPrinter = new BufferedDebugPrinter(
 			server, "MatchInfo:", UnixConsole.BLACK, UnixConsole.BACKGROUND_YELLOW
 		);
 	}
@@ -233,8 +233,6 @@ public class FibsRunner extends Thread {
 	}
 
 	private synchronized void processInput(String in) {
-	
-		//server.printDebug("FibsRunner.processInput>" + in);
 	
 		if(in.equals("6")) {
 			in = "6 ";
@@ -333,12 +331,12 @@ public class FibsRunner extends Thread {
 	
 		// print fibs output
 		// currently gameplay and tormonitor modes are filtered
-		if (server.getFibsmode() > 1) {		
+		if (server.getFibsmode() > 1) {
 			if (filteredInput != null) {
-				printer.printDebugln(filteredInput);
+				linePrinter.printDebugln(filteredInput);
 			}
 		} else {
-			printer.printDebugln(in);
+			linePrinter.printDebugln(in);
 		}
 	
 		//// LOGIN
@@ -907,7 +905,9 @@ public class FibsRunner extends Thread {
 			String parseStr;
 			int score;
 			int ml;
-			if (in.toLowerCase().startsWith("match length: ")) {
+
+			if (in.toLowerCase().startsWith("match length: "))
+            {
 				server.printDebug("setting resumeparams: " + in);
 				try {
 					parseStr = in.split("match length: ")[1];
@@ -919,13 +919,11 @@ public class FibsRunner extends Thread {
 				} catch (NumberFormatException e) {
 
 				}
-
 			}
-			if (in.toLowerCase()
-					.startsWith(
-							"points for "
-									+ server.prefs.getName().toLowerCase()
-									+ ": ")) {
+
+			if (in.toLowerCase().startsWith("points for "
+                    + server.prefs.getName().toLowerCase() + ": "))
+            {
 				server.printDebug("setting resumeparams: " + in);
 				try {
 					parseStr = in.split("points for " + server.prefs.getName()
@@ -936,10 +934,11 @@ public class FibsRunner extends Thread {
 				} catch (NumberFormatException e) {
 
 				}
-
 			}
+
 			if (in.toLowerCase().startsWith(
-					"points for " + match.getPlayer1().toLowerCase() + ": ")) {
+					"points for " + match.getPlayer1().toLowerCase() + ": "))
+            {
 				server.printDebug("setting resumeparams: " + in);
 				try {
 					parseStr = in.toLowerCase().split(
@@ -951,35 +950,33 @@ public class FibsRunner extends Thread {
 				} catch (NumberFormatException e) {
 
 				}
-
 			}
+
 			if (in.toLowerCase().startsWith(
-					"turn: " + server.prefs.getName().toLowerCase())) {
+					"turn: " + server.prefs.getName().toLowerCase()))
+            {
 				server.printDebug("setting resumeparams: " + in);
 				match.setTurn(new int[] { 1, 0 });
 				resumeBits[0] = true;
 
 				server.printDebug("turn set to: " + match.getTurn()[0] + " "
 						+ match.getTurn()[1]);
-
 			}
+
 			if (in.toLowerCase().startsWith(
-					"turn: " + match.getPlayer1().toLowerCase())) {
+					"turn: " + match.getPlayer1().toLowerCase()))
+            {
 				server.printDebug("setting resumeparams: " + in);
 				match.setTurn(new int[] { 0, 1 });
 				resumeBits[0] = true;
 				server.printDebug("turn set to: " + match.getTurn()[0] + " "
 						+ match.getTurn()[1]);
-
 			}
 		}
 
 		
-		if (resume
-                && resumeBits[0]
-                && resumeBits[1]
-                && resumeBits[2]
-                && resumeBits[3])
+		if (resume && resumeBits[0] && resumeBits[1]
+                   && resumeBits[2] && resumeBits[3])
         {
             server.printDebug("finished setting resumeparams, requesting board from fibs");
             resume = false;
@@ -997,9 +994,9 @@ public class FibsRunner extends Thread {
 		procGPcounter++;
 
 		/// START GAME ///
-		if (match != null && in.equals(
-				"Starting a new game with " + match.getPlayer1()
-						+ ".")) {
+		if (match != null && in.equals("Starting a new game with "
+                + match.getPlayer1() + "."))
+        {
 			resetWaitFlags();
 			match.setIngame(true);
 			match.setCube(1);
@@ -1007,7 +1004,7 @@ public class FibsRunner extends Thread {
 
 		// / PROCESS INITIAL ROLL ///
 		if (in.startsWith("You rolled ") && match.getRound() == 0) {
-			server.printDebug("in: " + in);
+			//server.printDebug("in: " + in);
 			server.printDebug("initial roll");
 			String[] arr0 = in.split("You rolled");
 			server.printDebug("dbg: arr0[0]" + arr0[0]);
@@ -1050,62 +1047,76 @@ public class FibsRunner extends Thread {
 		} // / END: PROCESS INITIAL ROLL ///
 
 		// / DROPPED MATCH ///
-		if (match != null && in.startsWith(
-				"** Player " + match.getPlayer1()
-						+ " has left the game.")) {
-			server.printDebug("in: " + in);
+		if (match != null && in.startsWith( "** Player "
+                + match.getPlayer1() + " has left the game."))
+        {
+			//server.printDebug("in: " + in);
 			server.printDebug("END MATCH - opponent left");
 
 			match.setDropped(true);
 			stopMatch();
 			return;
-		} else if (match != null && in.startsWith(
-				match.getPlayer1() + " drops connection.")) {
-			server.printDebug("in: " + in);
+		}
+        else if (match != null && in.startsWith(
+				match.getPlayer1() + " drops connection."))
+        {
+			//server.printDebug("in: " + in);
 			server.printDebug("END MATCH - OPP drops connection");
 			
 			match.setDropped(true);
 			stopMatch();
 			return;
-		} else if (match != null && in.toLowerCase().startsWith(
-				match.getPlayer1().toLowerCase() + " logs out")) {
-			server.printDebug("in: " + in);
+		}
+        else if (match != null && in.toLowerCase().startsWith(
+				match.getPlayer1().toLowerCase() + " logs out"))
+        {
+			//server.printDebug("in: " + in);
 			server.printDebug("END MATCH - OPP logged out");
 
 			match.setDropped(true);
 			stopMatch();
 			return;
-		} else if (match != null && in.startsWith("Network error with")
-				&& in.contains(match.getPlayer1())) {
-			server.printDebug("in: " + in);
+		}
+        else if (match != null && in.startsWith("Network error with")
+				&& in.contains(match.getPlayer1()))
+        {
+			//server.printDebug("in: " + in);
 			server.printDebug("END MATCH - network error with OPP");
 
 			match.setDropped(true);
 			stopMatch();
 			return;
-		} else if (match != null && in.startsWith("Closed old connection with user " + match.getPlayer1())
-				&& in.toLowerCase().contains(match.getPlayer1().toLowerCase())) {
+		}
+        else if (match != null && in.startsWith("Closed old connection with user " + match.getPlayer1())
+				&& in.toLowerCase().contains(match.getPlayer1().toLowerCase()))
+        {
 
 			server.printDebug("END MATCH - closed old. conn.with OPP");
 
 			match.setDropped(true);
 			stopMatch();
 			return;
-		} else if (match != null && in.startsWith("** You terminated the game")) {
-			server.printDebug("in: " + in);
+		}
+        else if (match != null && in.startsWith("** You terminated the game"))
+        {
+			//server.printDebug("in: " + in);
 			server.printDebug("END MATCH - I left the game");
 
 			match.setDropped(true);
 			stopMatch();
 			return;
-		} else if (match != null && in.startsWith("** Error: No one to leave.")) {
+		}
+        else if (match != null && in.startsWith("** Error: No one to leave."))
+        {
 			server.printDebug("in: " + in);
 			server.printDebug("END MATCH - ? (I left the game earlier but got no response?)");
 
 			match.setDropped(true);
 			stopMatch();
-		} else if (match != null && in.startsWith("** You're not playing.")) {
-			server.printDebug("in: " + in);
+		}
+        else if (match != null && in.startsWith("** You're not playing."))
+        {
+			//server.printDebug("in: " + in);
 			server.printDebug("END MATCH - ? (mathc timed out during a long network lag?)");
 
 			match.setDropped(true);
@@ -1115,7 +1126,7 @@ public class FibsRunner extends Thread {
 
 		/// END MATCH
 		if (in.startsWith("You win ") && in.contains("point match")) {
-			server.printDebug("in: " + in);
+			//server.printDebug("in: " + in);
 			server.printDebug("END MATCH");
 
 			String [] split0 = in.replace(".", "").split("point match ");
@@ -1128,7 +1139,7 @@ public class FibsRunner extends Thread {
 		} else if (in.toLowerCase().startsWith(
 				match.getPlayer1().toLowerCase() + " wins")
 				&& in.contains("point match")) {
-			server.printDebug("in: " + in);
+			//server.printDebug("in: " + in);
 			server.printDebug("END MATCH");
 			
 			String [] split0 = in.replace(".", "").split(" point match ");
@@ -1157,7 +1168,7 @@ public class FibsRunner extends Thread {
 
 		//// END GAME ///
 		if (in.startsWith("You win the game")) {
-			server.printDebug("in: " + in);
+			//server.printDebug("in: " + in);
 			server.printDebug("END GAME - MatchDog won");
 
 			match.setRound(0);
@@ -1174,14 +1185,14 @@ public class FibsRunner extends Thread {
 		} else if (in.startsWith("You give up")
 				&& in.contains(
 						match.getPlayer1() + " wins the game")) {
-			server.printDebug("in: " + in);
+			//server.printDebug("in: " + in);
 			server.printDebug("END GAME - MatchDog gave up double");
 
 			match.setRound(0);
 			match.setTurn(new int[] { 0, 0 });
 			return;
 		} else if (in.startsWith("You accept and win ")) {
-			server.printDebug("in: " + in);
+			//server.printDebug("in: " + in);
 			server.printDebug("END GAME - OPP resign accepted");
 
 			match.setRound(0);
@@ -1190,7 +1201,7 @@ public class FibsRunner extends Thread {
 		} else if (in.toLowerCase().contains(
 				match.getPlayer1().toLowerCase() + " wins")
 				&& in.contains(" point")) {
-			server.printDebug("in: " + in);
+			//server.printDebug("in: " + in);
 			server.printDebug("END GAME - MatchDog ??gave up double");
 
 			match.setRound(0);
@@ -1199,7 +1210,7 @@ public class FibsRunner extends Thread {
 		} else if(in.startsWith(match.getPlayer1() + " accepts") 
 									&& match.isOwnResignInProgress()) {
 			match.setOwnResignInProgress(false);
-			server.printDebug("in: " + in);
+			//server.printDebug("in: " + in);
 			server.printDebug("END GAME - MatchDog's resign accepted");
 
 			match.setRound(0);
@@ -1280,7 +1291,7 @@ public class FibsRunner extends Thread {
 			
 			match.setOppResignInProgress(true);
 			
-			server.printDebug("in: " + in);
+			//server.printDebug("in: " + in);
 			server.printDebug("OPP wants to resign");
 
 			String[] arr0 = in.split("You will win ");
@@ -1461,10 +1472,9 @@ public class FibsRunner extends Thread {
 				}
 
 				if (in.startsWith("You roll ")) {
-					server.printDebug("got 'You roll ...'");
-					server.printDebug("");
-					printMatchInfo();
-					server.printDebug("waiting for own roll board");
+					server.printDebug("got 'You roll ...', waiting for own roll board");
+					//server.printDebug("");
+					//printMatchInfo();
 					wRollBoard = true;
 					match.touchStamps();
 					return;
@@ -1552,11 +1562,10 @@ public class FibsRunner extends Thread {
 						&& ownDoubleInProgress) {
 					server.printDebug("last doubled in round: " + doubledInRound);
 					if(match.getRound() > doubledInRound) {
-						server.printDebug("got ACCEPT response to own double");
-						server.printDebug("");
-						printMatchInfo();
-						server.printDebug("waiting for roll board");
-						// wDoubleBoard = true;
+						server.printDebug("got ACCEPT response to own double, waiting for roll board");
+						//server.printDebug("");
+						//printMatchInfo();
+
 						match.setCube(match.getCube() * 2);
 						doubledInRound = match.getRound();
 					}
@@ -1574,11 +1583,9 @@ public class FibsRunner extends Thread {
 				
 				if (in.toLowerCase().startsWith(
 						match.getPlayer1().toLowerCase() + " moves")) {
-					server.printDebug("got 'OPP moves...'");
-					server.printDebug("");
-					printMatchInfo();
-					server.printDebug("waiting for OPP move board");
-
+					server.printDebug("got 'OPP moves...', waiting for OPP move board");
+					//server.printDebug("");
+					//printMatchInfo();
 					wOppMoveBoard = true;
 					match.touchStamps();
 					return;
@@ -1592,7 +1599,7 @@ public class FibsRunner extends Thread {
 							&& !(match.wasResumed() && match.getRound() == 1)) {
 
 						wOppMoveBoard = true;
-						server.printDebug("waiting for OPP move board");
+						server.printer.printDebug("waiting for OPP move board", "");
 						
 
 					} else {
@@ -1611,14 +1618,15 @@ public class FibsRunner extends Thread {
 					match.setTurn(new int[] { 1, 0 });
 					match.setRound(match.getRound() + 1);
 
-					if(match.isPostcrawford() && canDouble(in)[0]
+					/*if(match.isPostcrawford() && canDouble(in)[0]
 					               && match.getRound() == 1) {
 						//match.setPostcrawford(false);
 						server.printDebug("POSTCRAWFORD DOUBLING");
 						sleepFibs(100);
 						server.fibsout.println("double");
 					
-					} else if (match.getMl() > 1 && canDouble(in)[0]
+					} else */
+                    if (match.getMl() > 1 && canDouble(in)[0]
 							&& !match.isCrawford() && !match.oneToWin()) {
 
 						server.printDebug("sending. [candouble: " + canDouble(in)[0]
@@ -1641,9 +1649,8 @@ public class FibsRunner extends Thread {
 
 				if (in.toLowerCase().startsWith(
 						match.getPlayer1().toLowerCase() + " doubles.")) {
-					server.printDebug("got OPP doubles");
-					printMatchInfo();
-					server.printDebug("waiting for OPP double board");
+					server.printDebug("got OPP doubles, waiting for OPP double board");
+					//printMatchInfo();
 
 					wOppDoubleBoard = true;
 					server.fibsout.println("board");
