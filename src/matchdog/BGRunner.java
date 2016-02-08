@@ -83,7 +83,7 @@ public class BGRunner  {
         if(server.prefs.getMaxml() == 1) {
             println("set evaluation chequer eval cubeful off");
         }
-        println("set threads 8");
+        //println("set threads 8");
         println("set evaluation chequer eval plies " + checkquerply);
         println("set evaluation cubedecision eval plies " + cubedecply);
 
