@@ -2,65 +2,121 @@ package matchdog;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.Buffer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by marekful on 01/02/2016.
  */
-public class GnubgResponse implements Runnable {
+public class GnubgCommand implements Runnable {
 
     MatchDog server;
     BufferedReader input;
+    PrintWriter output;
     BufferedDebugPrinter printer;
+    String command;
     boolean isEvalcmd;
 
-    GnubgResponse(MatchDog server,
-                  BufferedReader input,
-                  BufferedDebugPrinter printer,
-                  boolean isEvalcmd)
+    GnubgCommand(MatchDog server,
+                 BufferedReader input,
+                 PrintWriter output,
+                 BufferedDebugPrinter printer,
+                 String command,
+                 boolean isEvalcmd)
     {
         this.server = server;
         this.input = input;
+        this.output = output;
         this.printer = printer;
+        this.command = command;
         this.isEvalcmd = isEvalcmd;
+    }
+
+    private void sendCommand() {
+        String msg = "sending " + (isEvalcmd ? "EVALUATION CMD" : "BOARD STATE") + "... ";
+        long sockettime = System.nanoTime();
+        output.printf("%s", command + "\r\n");
+        msg += "(" + ((System.nanoTime() - sockettime) / 1000000.0) + " ms) OK, waiting for reply";
+        printer.printDebugln(msg);
     }
 
     @Override
     public void run() {
 
-        String rawReply, fibsCommand, unit;
+        String rawReply = "", fibsCommand, unit = "";
         long replytime;
-        double replydiff;
+        double replydiff = 0;
 
-        replytime = System.nanoTime();
-        try {
-            rawReply = input.readLine();
-        } catch (IOException e) {
-            server.systemPrinter.printDebugln("Exception reading from gnubg external: " + e.getMessage());
-            return;
-        }
+        sendCommand();
 
-        if((replydiff = (System.nanoTime() - replytime) / 1000000000.0) < 0.001) {
-            replydiff *= 1000;
-            unit = " ms";
-        } else {
-            unit = " seconds";
-        }
+        for(int i = 0; i < 2; i++) {
+            try {
+                replytime = System.nanoTime();
 
-        if(rawReply.startsWith("Error:")) {
-            server.printDebug(" --**--> GNUBG ERROR: ");
-            server.printDebug(rawReply);
-            return;
+                rawReply = input.readLine();
+
+                if((replydiff = (System.nanoTime() - replytime) / 1000000000.0) < 0.001) {
+                    replydiff *= 1000;
+                    unit = " ms";
+                } else {
+                    unit = " seconds";
+                }
+
+                if(rawReply.startsWith("Error:")) {
+                    server.printDebug(" --**--> GNUBG ERROR: ");
+                    server.printDebug(rawReply);
+
+                    if(rawReply.contains("no command given")) {
+                        server.printDebug("--**--> command: " + command);
+                        if(!command.equals("")) {
+                            server.printDebug("--**--> resending: " + command);
+                            sendCommand();
+                            continue;
+                        }
+                    }
+                    return;
+                }
+
+                boolean m = Pattern.compile("(\\d\\.[\\d]{6}\\s*){6}").matcher(rawReply).matches();
+
+                if(isEvalcmd && m) {
+                    break;
+                } else if(!isEvalcmd && !m) {
+                    break;
+                }
+
+            } catch (IOException e) {
+                server.systemPrinter.printDebugln("Exception reading from gnubg external: " + e.getMessage());
+            }
+
+            if(i == 0) {
+                printer.printDebugln(" ** !! ** trying next line for "
+                        + (isEvalcmd ? "EVAL" : "BOARD") + " -   cmd: " + command);
+                printer.printDebugln(" ** !! ** trying next line for "
+                        + (isEvalcmd ? "EVAL" : "BOARD") + " - reply: " + rawReply);
+            } else {
+                printer.printDebugln(" ** !! ** GIVING UP for "
+                        + (isEvalcmd ? "EVAL" : "BOARD") + " -   cmd: " + command);
+                printer.printDebugln(" ** !! ** GIVING UP for "
+                        + (isEvalcmd ? "EVAL" : "BOARD") + " - reply: " + rawReply);
+                return;
+            }
         }
 
         if(isEvalcmd) {
-            parseEquities(rawReply);
             printer.printDebugln("gnubg EQUITIES (in " + replydiff + unit + "): " + rawReply);
+            parseEquities(rawReply);
 
         } else {
 
             if(server.fibs.match == null || server.fibs.match.isFinished()) {
                 printer.printDebugln("*!* NOT SENDING to FIBS -> match finished");
+                return;
+            }
+
+            if(rawReply.equals("")) {
                 return;
             }
 
@@ -70,12 +126,9 @@ public class GnubgResponse implements Runnable {
 
             server.fibs.sleepFibs(100);
             server.fibsout.println(fibsCommand);
-            printer.printDebugln("sent to fibs: ");
+            server.printDebug("sent to fibs: ");
             server.fibs.printFibsCommand(fibsCommand);
-            printer.printDebugln("");
-            server.fibs.printMatchInfo();
         }
-
     }
 
     private String processReply(String line) {

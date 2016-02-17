@@ -5,80 +5,24 @@ package matchdog;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
-class PlayerPrefs {
+class PlayerPrefs extends Prefs {
 
-	Object [] prefsObj;
-	String name, pw;
-	boolean autoLogin, autoInvite, autoJoin, autoInviteSaved, autoJoinSaved;
-	int maxml, checkquerply, cubedecply, expDivider, repLimit, gnubgPort, listenerPort;
-	double noise;
-	String [] movefilters = {"", "", "", "", "", "", "", "", "", ""};
-	Map<String, Integer> preferredOpps;
-	
-	PlayerPrefs(Object [] prefsObj) {
-		this.prefsObj = prefsObj;
+	public Properties props;
+	public String username, password;
+	public boolean autologin, autoinvite, autojoin, autoinvitesaved, autojoinsaved;
+	public int maxml, checkquerply, cubedecply, expdivider, replimit, replaytimeout;
+    public int gnubgextport, listenerport;
+	public double noise;
+	public String [] movefilters = {"", "", "", "", "", "", "", "", "", ""};
+	public Map<String, Integer> preferredOpps;
+
+	PlayerPrefs(Properties props) {
+		this.props = props;
 		preferredOpps = new HashMap<String, Integer>();
-		
-		initPrefs();
-		
-	}
-	
-	void initPrefs () {
-		autoInviteSaved = true;
-		autoJoinSaved = true;
-		int j = 0;
-		try {
-			for(int i = 0; i < prefsObj.length; i++) {
-				if(i == 0) {
-					name = prefsObj[i].toString();
-				} else if(i == 1) {
-					pw = prefsObj[i].toString();
-				} else if(i == 2) {
-					autoLogin = Boolean.parseBoolean(prefsObj[i].toString());
-				} else if(i == 3) {
-					autoInvite = Boolean.parseBoolean(prefsObj[i].toString());
-				} else if(i == 4) {
-					autoJoin = Boolean.parseBoolean(prefsObj[i].toString());				
-				} else if(i == 5) {
-					autoInviteSaved = Boolean.parseBoolean(prefsObj[i].toString());
-				} else if(i == 6) {
-					autoJoinSaved = Boolean.parseBoolean(prefsObj[i].toString());
-				} else if(i == 7) {
-					maxml = Integer.parseInt(prefsObj[i].toString());
-				} else if(i == 8) {
-					expDivider = Integer.parseInt(prefsObj[i].toString());
-				} else if(i == 9) {
-					repLimit = Integer.parseInt(prefsObj[i].toString());
-				} else if(i == 10) {
-					checkquerply = Integer.parseInt(prefsObj[i].toString());
-				} else if(i == 11) {
-					cubedecply = Integer.parseInt(prefsObj[i].toString());
-				} else if(i == 12) {
-					noise = Double.parseDouble(prefsObj[i].toString());
-				} else if(i > 12 && i < 63 && (i - 3) % 5 == 0) {
-					movefilters[j] = prefsObj[i].toString() + " "
-							+ prefsObj[i + 1].toString() + " "
-							+ prefsObj[i + 2].toString() + " "
-							+ prefsObj[i + 3].toString() + " "
-							+ prefsObj[i + 4].toString() + " ";
-					j++;				
-					
-				} else if(i > 62 && i < 83 && i % 2 == 1) {
-					if(!prefsObj[i].toString().equals("") 
-							&& !prefsObj[i].toString().equals("0")) {
-						preferredOpps.put(prefsObj[i].toString(), 
-								Integer.parseInt(prefsObj[i + 1].toString()));
-					}
-				} else if(i == 83) {
-					gnubgPort = Integer.parseInt(prefsObj[i].toString());
-				} else if(i == 84) {
-					listenerPort = Integer.parseInt(prefsObj[i].toString());
-				}
-			}
-		} catch(Exception e) {
-			e.printStackTrace();
-		}
+
+		initProps(props);
 	}
 
 	public String [] showPrefs() {
@@ -109,36 +53,36 @@ class PlayerPrefs {
 		return out;	
 	}
 	
-	public String getName() {
-		return name;
+	public String getUsername() {
+		return username;
 	}
 
-	public void setName(String name) {
-		this.name = name;
+	public void setUsername(String username) {
+		this.username = username;
 	}
 
-	public String getPw() {
-		return pw;
+	public String getPassword() {
+		return password;
 	}
 
-	public void setPw(String pw) {
-		this.pw = pw;
+	public void setPassword(String password) {
+		this.password = password;
 	}
 
 	public boolean isAutologin() {
-		return autoLogin;
+		return autologin;
 	}
 
 	public void setAutologin(boolean autologin) {
-		this.autoLogin = autologin;
+		this.autologin = autologin;
 	}
 
 	public boolean isAutoinvite() {
-		return autoInvite;
+		return autoinvite;
 	}
 
 	public void setAutoinvite(boolean autoinvite) {
-		this.autoInvite = autoinvite;
+		this.autoinvite = autoinvite;
 	}
 
 	public Map<String, Integer> getPreferredOpps() {
@@ -182,58 +126,62 @@ class PlayerPrefs {
 	}
 
 	public boolean isAutojoin() {
-		return autoJoin;
+		return autojoin;
 	}
 
 	public void setAutojoin(boolean autojoin) {
-		this.autoJoin = autojoin;
+		this.autojoin = autojoin;
 	}
 
 	public boolean isAutoresume() {
-		return autoInviteSaved;
+		return autoinvitesaved;
 	}
 
 	public void setAutoresume(boolean autoresume) {
-		this.autoInviteSaved = autoresume;
+		this.autoinvitesaved = autoresume;
 	}
 
-	public boolean isAutoInviteSaved() {
-		return autoInviteSaved;
+	public boolean isAutoinvitesaved() {
+		return autoinvitesaved;
 	}
 
-	public void setAutoInviteSaved(boolean autoInviteSaved) {
-		this.autoInviteSaved = autoInviteSaved;
+	public void setAutoinvitesaved(boolean autoinvitesaved) {
+		this.autoinvitesaved = autoinvitesaved;
 	}
 
-	public boolean isAutoJoinSaved() {
-		return autoJoinSaved;
+	public boolean isAutojoinsaved() {
+		return autojoinsaved;
 	}
 
-	public void setAutoJoinSaved(boolean autoJoinSaved) {
-		this.autoJoinSaved = autoJoinSaved;
+	public void setAutojoinsaved(boolean autojoinsaved) {
+		this.autojoinsaved = autojoinsaved;
 	}
 
-	public int getExpDivider() {
-		return expDivider;
+	public int getExpdivider() {
+		return expdivider;
 	}
 
-	public void setExpDivider(int expDivider) {
-		this.expDivider = expDivider;
+	public void setExpdivider(int expdivider) {
+		this.expdivider = expdivider;
 	}
 
-	public int getRepLimit() {
-		return repLimit;
+	public int getReplimit() {
+		return replimit;
 	}
 
-	public void setRepLimit(int repLimit) {
-		this.repLimit = repLimit;
+	public void setReplimit(int replimit) {
+		this.replimit = replimit;
 	}
 	
 	public int getGnuBgPort() {
-		return gnubgPort;
+		return gnubgextport;
 	}
 	
-	public int getListenerPort() {
-		return listenerPort;
+	public int getListenerport() {
+		return listenerport;
 	}
+
+    public int getReplayTimeout() {
+        return replaytimeout;
+    }
 }

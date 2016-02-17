@@ -26,7 +26,7 @@ public class BGRunner  {
     private PrintWriter s_output;
 
     protected BufferedDebugPrinter s_printer;
-    private boolean busy, connected, evalcmd;
+    private boolean connected, evalcmd;
 
 	BGRunner(String[] command, MatchDog server) {
 
@@ -39,7 +39,6 @@ public class BGRunner  {
 		);
 
         // sock
-        busy = false;
         connected = false;
         evalcmd = false;
 
@@ -104,7 +103,7 @@ public class BGRunner  {
     private void println(String str) {
         p_output.println(str);
         try {
-            MatchDog.sleep(8);
+            Thread.sleep(24);
         } catch (InterruptedException e) {
             return;
         }
@@ -124,12 +123,10 @@ public class BGRunner  {
 
     // sock
     public synchronized void execBoard(String board) {
-        s_printer.printDebugln("sending BOARD STATE... ");
         execCommand(board);
     }
 
     public synchronized void execEval(String board) {
-        s_printer.printDebugln("sending EVALUATION CMD... ");
         setEvalcmd(true);
         execCommand("evaluation fibsboard " + board + " PLIES 3 CUBE ON CUBEFUL");
         setEvalcmd(false);
@@ -137,41 +134,22 @@ public class BGRunner  {
 
     private synchronized void execCommand(String lineIn) {
 
-        long sockettime;
-
-        if(busy) {
-            // FIXME
-            // This is actually not a bug: can be caused by a 'kibitz move'
-            // during gameplay or by the stamptimer.
-            // Could be handled better.
-            s_printer.printDebugln("*** !! *** NOT SENDING new line to socket - BUSY");
-            return;
-        }
-        busy = true;
-
         if(lineIn.trim().equals("")) {
             s_printer.printDebugln("*** !! *** NOT SENDING empty line");
             return;
         }
 
-        sockettime = System.nanoTime();
-        s_output.printf("%s", lineIn.trim() + "\r\n");
+        GnubgCommand r = new GnubgCommand(server, s_input, s_output, s_printer, lineIn.trim(), isEvalcmd());
 
-        s_printer.printDebug("(" + ((System.nanoTime() - sockettime) / 1000000.0) + " ms) OK, waiting for reply", "");
-
-        GnubgResponse r = new GnubgResponse(server, s_input, s_printer, isEvalcmd());
-
-        // Process evalcmd synchronously becaue these equities are used
-        // to decide resignation later in the same invocation of processGamePlay.
-        // Process board state asynchronously so FibsRunner can process new input
-        // while waiting for gnubg's response.
+        // Process evalcmd synchronously (in the same thread) because these equities are used
+        // to decide resignation later in the same invocation of FibsRunner.processGamePlay().
+        // Process board state asynchronously (in separate thread) so FibsRunner can process
+        // new input while waiting for gnubg's response.
         if(isEvalcmd()) {
             r.run();
         } else {
             (new Thread(r)).start();
         }
-
-        busy = false;
     }
 
 
@@ -179,13 +157,12 @@ public class BGRunner  {
 
         while(!connected) {
             try {
-                MatchDog.sleep(100);
+                Thread.sleep(100);
                 InetAddress sa = InetAddress.getByName("localhost");
                 s = new Socket(sa, server.prefs.getGnuBgPort());
                 if(s.isConnected()) {
                     server.systemPrinter.printDebugln("Successfully connected to bg socket");
                     connected = true;
-                    server.gnubg.processInput();
                 }
                 s_input = new BufferedReader(new InputStreamReader(s.getInputStream()));
                 s_output = new PrintWriter(s.getOutputStream(), true);
@@ -198,6 +175,7 @@ public class BGRunner  {
                 );
             }
         }
+        processInput();
     }
 
     private void closeSocket() {

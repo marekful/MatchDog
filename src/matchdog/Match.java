@@ -40,7 +40,7 @@ public class Match {
 	
 	Match (MatchDog server, String oppname, int matchlength) {
 		this.server = server;
-		player0 = server.prefs.getName();
+		player0 = server.prefs.getUsername();
 		player1 = oppname;
 		ml = matchlength;
 		gameno = 0;

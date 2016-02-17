@@ -19,7 +19,7 @@ public class Uploader extends Thread {
 		dead = false;
 		try {
 			String in;
-			String command = server.getScpScriptPath() + " " + filename;
+			String command = server.programPrefs.getScpscriptpath() + " " + filename;
 			p = Runtime.getRuntime().exec(command);
 			server.printDebug(" > runtime command: " + command);
 			

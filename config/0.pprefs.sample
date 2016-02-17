@@ -1,0 +1,41 @@
+# FIBS player sample configuration file.
+# The file must have a name of a single digit
+# integer from 0 to 9 and the extension .pprefs
+# e.g. '3.pprefs'.
+# Any of these files from 0 to 9, if exists,
+# represent a FIBS user and its number must be
+# passed on the command line to start the server
+# with the specified user. E.g. 'java MatchDogServer 3'
+# The following keys must exist and their values
+# are configurable:
+
+s_username                            : fibsuser
+s_password                            : password
+b_autologin                           : true
+b_autoinvite                          : false
+b_autojoin                            : true
+b_autoinvitesaved                     : true
+b_autojoinsaved                       : true
+
+i_maxml                               : 1
+i_expdivider                          : 100
+i_replimit                            : -16000
+i_replaytimeout                       : 8
+
+i_checkquerply                        : 3
+i_cubedecply                          : 3
+d_noise                               : 0.0
+
+as_movefilters_0                      : 1 0 0 20 0.32
+as_movefilters_1                      : 2 0 0 20 0.32
+as_movefilters_2                      : 2 1 -1 0 0.0
+as_movefilters_3                      : 3 0 0 20 0.32
+as_movefilters_4                      : 3 1 -1 0 0.0
+as_movefilters_5                      : 3 2 0  6 0.08
+as_movefilters_6                      : 4 0 0 20 0.32
+as_movefilters_7                      : 4 1 -1 0 0.0
+as_movefilters_8                      : 4 2 0  6 0.08
+as_movefilters_9                      : 4 3 -1 0 0.0
+
+i_gnubgextport                        : 4544
+i_listenerport                        : 55272

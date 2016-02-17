@@ -1,0 +1,12 @@
+# Program parameters sample configuration file.
+# The file must be named 'matchdog.prefs'.
+# The following keys must exist and their values
+# are configurable:
+
+s_fibshost        : fibs.com
+i_fibsport        : 4321
+as_gnubgCmdArr_0  : /Applications/gnubg.app/Contents/MacOS/local/bin/gnubg -t -q
+as_gnubgCmdArr_1  : /usr/local/chroot/home/marekful/gnubg/gnubg-1.05.000/gnubg -t -q
+s_scpscriptpath   : ../scripts/./scp.sh
+s_platform        : MatchDogServer
+s_version         : 0.84
