@@ -699,7 +699,7 @@ public class FibsRunner extends Thread {
 					if(server.prefs.getMaxml() == 1) {
 						sleepFibs(750);
 						server.fibsout.println("tell " + opp
-								+ " I only play 1 pointers.");
+								+ " I play only 1-pointers.");
 					} else {
 						server.fibsout.println("tell " + opp
 							+ " I play matches up to "
@@ -708,15 +708,11 @@ public class FibsRunner extends Thread {
 				} else if (oppexp / server.prefs.getExpdivider() < ml) {
 					setInvitationInProgress(false);
 					server.printDebug("Not joining invitation - not enough exp: " + (oppexp / server.prefs.getExpdivider()) + " < " + ml);
-					server.fibsout
-							.println("tell "
-									+ opp
-									+ " You are not experienced enough for that long match, sorry.");
+					server.fibsout.println("tell " + opp
+                            + " You are not experienced enough for that long match, sorry.");
 					sleepFibs(200);
-					server.fibsout
-							.println("tell "
-									+ opp
-									+ " (Let match length be less than your experience / " + server.prefs.getExpdivider() + ")");
+					server.fibsout.println("tell " + opp + " (Let match length be less than your experience / "
+                            + server.prefs.getExpdivider() + ")");
 				} else if (opprep < server.prefs.getReplimit()) {
 					setInvitationInProgress(false);
 					server.printDebug("Not joining invitation - bad rep: " + opprep + " < " + server.prefs.getReplimit());

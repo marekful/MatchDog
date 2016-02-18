@@ -336,6 +336,21 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                             + " pGP# " + fibs.procGPcounter);
                     output.println();
                     continue;
+                } else if (line.equals("log")) {
+                    output.println(statview.dumpMatchlog());
+                    leaveShell(output);
+                    continue;
+                } else if (line.startsWith("log ")) {
+                    String[] split = line.split(" ");
+                    int len = 10;
+                    if(split.length > 1) {
+                        try {
+                            len = Integer.parseInt(split[1]);
+                        } catch (NumberFormatException e) {}
+                        output.println(statview.dumpMatchlog(len));
+                        leaveShell(output);
+                    }
+                    continue;
                 } else if (line.equals("19")) {
                     output.print(prefs.getPreferredOpps().toString());
                     output.println();

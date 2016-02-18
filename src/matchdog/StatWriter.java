@@ -3,10 +3,9 @@ package matchdog;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.TreeMap;
+import java.util.*;
 
 import matchdog.PlayerStats.PlayerStat;
 
@@ -26,7 +25,7 @@ public class StatWriter {
 		server.printDebug(str);
 	}
 
-	public String getTotalTimeStr(long in) {
+    static public String getTotalTimeStr(long in) {
 		
         long allseconds = in / 1000;
 
@@ -308,4 +307,43 @@ public class StatWriter {
         return true;
 
 	}
+
+    public String dumpMatchlog() {
+        return dumpMatchlog(10);
+    }
+
+    public String dumpMatchlog(int limit) {
+
+        int c = 0; String output = "";
+        TreeMap<Date, MatchLog> allPlayers = new TreeMap<>(Collections.reverseOrder());
+        boolean first = true;
+        DecimalFormat df = new DecimalFormat("#.##");
+
+        for (PlayerStat p : playerstats.pstats.values()) {
+            allPlayers.putAll(new TreeMap<>(p.getHistory()));
+        }
+
+        for (Date d : allPlayers.keySet()) {
+
+            if(c >= limit) {
+                return output;
+            }
+
+            MatchLog l = allPlayers.get(d);
+            String player = playerstats.getPlayerNameByMatchLog(l);
+            char[] pad = new char[18 - player.length()];
+            Arrays.fill(pad, ' ');
+
+            if(first) first = false;
+            else output += System.lineSeparator();
+
+            output += d + " " + player + new String(pad) + " " + l.length + " " + l.finalscore + " "
+                    + l.getTotalTimeStr(0)
+                    + " " + l.ownRating + " (" + df.format(l.ownChange) + ") " + l.oppRating + " ("
+                    + df.format(l.oppChange) + ") ";
+            c++;
+        }
+
+        return output;
+    }
 }

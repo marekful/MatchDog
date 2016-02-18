@@ -32,6 +32,17 @@ public class PlayerStats implements Serializable {
 	PlayerStat getByName(String name) {
 		return pstats.get(name);
 	}
+
+	String getPlayerNameByMatchLog(MatchLog log) {
+		for (String p : pstats.keySet()) {
+            for(Date d : pstats.get(p).getHistory().keySet()) {
+                if(pstats.get(p).getHistory().get(d).equals(log)) {
+                    return p;
+                }
+            }
+        }
+        return null;
+	}
 	
 	boolean hasPlayer(String name) { 
 			

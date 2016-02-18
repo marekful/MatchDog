@@ -87,9 +87,12 @@ public class MatchLog implements Serializable {
 	
 	public String getTotalTimeStr(int mode) {
 		String tmp = "--";
+		long t1, t2;
 		if(mode == 0) {
-			tmp = totaltime / 1000 / 60 + ":"
-			+ (totaltime / 1000 - totaltime / 1000 / 60 * 60);
+            t1 = totaltime / 1000 / 60;
+            t2 = (totaltime / 1000 - totaltime / 1000 / 60 * 60);
+			tmp = (t1 < 10 ? "0" : "" ) + t1 + ":"
+			    + (t2 < 10 ? "0" : "" ) + t2;
 		
 		} else if(mode == 1) {
 			tmp = totaltime2 / 1000 / 60 + ":"
