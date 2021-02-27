@@ -143,7 +143,7 @@ map, the default user at index 0 is used.
 
 
 
-**Example initialisation command sequence**
+**Example gnubg initialisation command sequence**
 
 `set threads 8` # number of cpu cores this instance will use
 
@@ -165,7 +165,7 @@ map, the default user at index 0 is used.
 
 `set evaluation movefilter 4 2 0 4 0.080`
 
-`external localhost:xxxx`
+`external localhost:xxxx` # this causes gnubg to expose the external interface and will accept user input via the API 
 
 
 
