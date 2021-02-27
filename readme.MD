@@ -4,7 +4,7 @@ It uses the [gnubg](https://www.gnu.org/software/gnubg/) backgammon
 evaluation engine as backend.
 
 Bots are allowed on FIBS but if you want to run one, 
-the best is to check with site administrator. 
+the best is to check with the site administrator. 
 If you abuse FIBS, you will be banned.
 
 ***FEATURES***
