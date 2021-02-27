@@ -1,3 +1,62 @@
+MatchDog is a [FIBS](http://fibs.com) bot. It can invite and accept invitations 
+from other players or bots on FIBS and play matches with them. 
+It uses the [gnubg](https://www.gnu.org/software/gnubg/) backgammon 
+evaluation engine as backend.
+
+Bots are allowed on FIBS but if you want to run one, 
+the best is to check with site administrator. 
+If you abuse FIBS, you will be banned.
+
+***FEATURES***
+
+* several preconfigured users can be stored
+* run MatchDog in multiple instances
+* select user with command line argument
+* autologin option
+* keep track of saved games
+* resume saved matches
+* a list of 5 preferred players and match lengths
+* RepBot integration: check players' reputation before accepting invitation
+* crawford rule handling
+* separate user settings (true or false) for:
+    - automatically invite preferred players
+    - automatically invite players when they log in if there is a saved match
+    - automatically join an invitation for a saved match
+    - automatically join an invitation
+      (if this is true, then opponent experience
+      and reputation is considered before joining)
+* opponent experience divider:
+  the following must be true to accept an invitation:
+  `[match length] < [opponent experience] / [opponent experience divider]`
+* opponent reputation limit:
+  the opponent's reputation reported by RepBot must be
+  greater than this limit
+* primitive chatbot: replies something silly when talked to
+* manual (runtime) switching of a number of settings currently including:
+    - autojoin, autoinvite, crawford
+* option to send commands to fibs/gnubg/gnubg socket from command line
+* timeout for inactivity
+* player statistics - keeps logs of all matches (including dropped ones)
+* statistics writer - write to stdout or file
+* statistics uploader - upload stat file to ftp server and send url to requester
+* player statistics files automatically uploaded to a ftp server on user request
+
+-----
+* preconfigurable user preferences include settings for:
+    - fibs user name and password
+    - a list of 5 preferred players (opponents on fibs)
+    - autologin to fibs
+    - maximum match length (when accepting invitations)
+    - autoinvite preferred players
+    - autoinvite for saved matches
+    - autojoin for saved mathces
+    - autojoin
+    - gnubg checkquer play ply
+    - gnubg cube decision ply
+    - gnubg noise
+    - gnubg movefilters
+
+
 ***REQUIREMENTS***
 
 **OS:**
@@ -89,58 +148,6 @@ and put in the players map at index 0.
 If no command line parameter is given or not a number is given
 or there is no user preferences object at that index of the
 map, the default user at index 0 is used.
-
-
-***FEATURES***
-
-* several preconfigured users can be stored
-* run MatchDog in multiple instances
-* select user with command line argument
-* autologin option
-* keep track of saved games
-* resume saved matches
-* a list of 5 preferred players and match lengths
-* RepBot integration: check players' reputation before accepting invitation
-* crawford rule handling
-* separate user settings (true or false) for:
-  - automatically invite preferred players
-  - automatically invite players when they log in if there is a saved match
-  - automatically join an invitation for a saved match
-  - automatically join an invitation 
-    (if this is true, then opponent experience
-    and reputation is considered before joining)
-* opponent experience divider:
-    the following must be true to accept an invitation:
-      `[match length] < [opponent experience] / [opponent experience divider]`
-* opponent reputation limit:
-    the opponent's reputation reported by RepBot must be
-    greater than this limit
-* primitive chatbot: replies something silly when talked to
-* manual (runtime) switching of a number of settings currently including:
-  - autojoin, autoinvite, crawford
-* option to send commands to fibs/gnubg/gnubg socket from command line
-* timeout for inactivity
-* player statistics - keeps logs of all matches (including dropped ones)
-* statistics writer - write to stdout or file
-* statistics uploader - upload stat file to ftp server and send url to requester
-* player statistics files automatically uploaded to a ftp server on user request
-
------
-* preconfigurable user preferences include settings for:
-  - fibs user name and password
-  - a list of 5 preferred players (opponents on fibs)
-  - autologin to fibs
-  - maximum match length (when accepting invitations)
-  - autoinvite preferred players
-  - autoinvite for saved matches
-  - autojoin for saved mathces
-  - autojoin
-  - gnubg checkquer play ply
-  - gnubg cube decision ply
-  - gnubg noise
-  - gnubg movefilters
-
-
 
 
 **Example gnubg initialisation command sequence**
