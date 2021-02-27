@@ -94,7 +94,7 @@ map, the default user at index 0 is used.
 ***FEATURES***
 
 * several preconfigured users can be stored
-* rung MatchDog in multiple instances
+* run MatchDog in multiple instances
 * select user with command line argument
 * autologin option
 * keep track of saved games
