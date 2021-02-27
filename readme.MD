@@ -145,8 +145,7 @@ map, the default user at index 0 is used.
 
 **Example initialisation command sequence**
 
-# Number of cpu cores the instance will use
-`set threads 8`
+`set threads 8` # number of cpu cores this instance will use
 
 `set eval sameasanalysis off`
 
