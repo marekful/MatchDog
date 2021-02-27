@@ -71,11 +71,11 @@ It will probably also work with any 1.5 release of JRE but has not been tested w
 **GNU Backgammon:**
 In order to successfully run the program you should be able to run gnubg.
 MatchDogServer will run the gnubg binary with `-q -t` options (silent, no gui). Give
-full path to the binary in the PROGRAM PARAMETERES section.
+full path to the binary in `config/matchdog.prefs` (see matchdog.prefs.sample).
 
 MatchDogServer should be able to open and also to connect
 to a socket on the localhost on the port number specified
-in the PROGRAM PARAMETERS section of the file 'MatchDogServer.java'.
+in `config/matchdog.prefs`.
 
 **FIBS:**
 MatchDog's FIBS player must use the following 'toggle' settings
@@ -104,12 +104,10 @@ wrap            NO
 ***SETUP***
 
 NOTE! 
-First, some program parameters and at least one user must be set up
-in the file `MatchDogServer.java` before compilation and run. 
+Specify global parameters in `config/matchdog.prefs` 
+and at least one user `config/[n].pprefs` before running. 
 
-See comments for the first five variables at the very beginning of the file.
-
-See comment for user preferences setup in the same file.
+See comments `config/0.pprefs.sample`
 
 Also, for the 'show log' function to work, the first five
 variables in the included `ftpupload.sh` file need to be set.
