@@ -143,9 +143,10 @@ map, the default user at index 0 is used.
 
 
 
-**Example gnubg settings on commandline**
+**Example initialisation command sequence**
 
-set threads 8
+# Number of cpu cores the instance will use
+`set threads 8`
 
 `set eval sameasanalysis off`
 
