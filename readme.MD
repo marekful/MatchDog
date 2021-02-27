@@ -15,7 +15,7 @@ If you abuse FIBS, you will be banned.
 * autologin option
 * keep track of saved games
 * resume saved matches
-* a list of 5 preferred players and match lengths
+* a list of 5 preferred players and match lengths (for auto invite)
 * RepBot integration: check players' reputation before accepting invitation
 * crawford rule handling
 * separate user settings (true or false) for:
@@ -36,10 +36,9 @@ If you abuse FIBS, you will be banned.
     - autojoin, autoinvite, crawford
 * option to send commands to fibs/gnubg/gnubg socket from command line
 * timeout for inactivity
-* player statistics - keeps logs of all matches (including dropped ones)
+* player statistics - keeps logs detailed log of all games and matches (including dropped ones with detail on all drops/resumes)
 * statistics writer - write to stdout or file
-* statistics uploader - upload stat file to ftp server and send url to requester
-* player statistics files automatically uploaded to a ftp server on user request
+* statistics uploader - upload player statistics file to ftp server and send url to user on request
 
 -----
 * preconfigurable user preferences include settings for:
