@@ -115,6 +115,7 @@ map, the default user at index 0 is used.
 * opponent reputation limit:
     the opponent's reputation reported by RepBot must be
     greater than this limit
+* primitive chatbot: replies something silly when talked to
 * manual (runtime) switching of a number of settings currently including:
   - autojoin, autoinvite, crawford
 * option to send commands to fibs/gnubg/gnubg socket from command line
