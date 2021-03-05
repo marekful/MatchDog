@@ -2,6 +2,7 @@ package matchdog;
 
 import etc.TorExitNodeChecker;
 import jcons.src.com.meyling.console.UnixConsole;
+import matchdog.fibsboard.FibsBoard;
 
 import java.io.*;
 import java.net.InetAddress;
@@ -11,7 +12,12 @@ import java.util.Calendar;
 import java.util.Date;
 
 public class FibsRunner extends Thread {
-	
+
+	static final int FIBS_MODE_LOGGED_IN = 0;
+	static final int FIBS_MODE_WATCH = 1;
+	static final int FIBS_MODE_GAME_PLAY = 2;
+	static final int FIBS_MODE_TOR_MONIOTOR = 3;
+
 	static final int timoutSeconds = 90;
 	static final String FIBSMSG_WAVES_GOODBYE = "waves goodbye";
     static final Object lock = new Object();
@@ -51,6 +57,8 @@ public class FibsRunner extends Thread {
 	boolean getSavedMatches, gettingSaved, getOwnRating,
 	getOppRating, invitationInProgress;
 	Date terminatedAt;
+
+	FibsBoard lastBoard;
 	
 	// Normally 'login()' will invoke 'getSavedMatches()' too but
 	// if that is not getting through to fibs the 'savedMatchs'
@@ -120,6 +128,8 @@ public class FibsRunner extends Thread {
 		gettingSaved = false;
 		getOwnRating = false;
 		getOppRating = false;
+
+		lastBoard = null;
 		
 		resendlastboard = false;
 		invitationInProgress = false;
@@ -187,29 +197,29 @@ public class FibsRunner extends Thread {
 
 				switch (server.getFibsmode()) {
 
-				case 0: // logged in mode
-					processInput(inputLine);
+					case FIBS_MODE_LOGGED_IN: // logged in mode
+						processInput(inputLine);
 					break;
 				
-				case 1: // watch mode
-					processInput(inputLine);
-					break;
-				
-				case 2: // play mode
+					case FIBS_MODE_WATCH: // watch mode
+						processInput(inputLine);
+						break;
 
-					processNextLine = true;
+					case FIBS_MODE_GAME_PLAY: // play mode
 
-					processInput(inputLine);
+						processNextLine = true;
 
-					if (filteredInput != null && processNextLine) {
-						processGamePlay(filteredInput);
-                        filteredInput = null;
-					}
-					break;
-				
-				case 3: // tor monitor mode
-					processInput(inputLine);
-					break;
+						processInput(inputLine);
+
+						if (filteredInput != null && processNextLine) {
+							processGamePlay(filteredInput);
+							filteredInput = null;
+						}
+						break;
+
+					case FIBS_MODE_TOR_MONIOTOR: // tor monitor mode
+						processInput(inputLine);
+						break;
 				}
 			}
 
@@ -241,6 +251,8 @@ public class FibsRunner extends Thread {
 		
 		if (in.length() < 2)
 			return;
+
+		boolean inputHasBoard = inputHasBoard(in);
 	
 		if (server.inviter != null) {
 	
@@ -332,7 +344,7 @@ public class FibsRunner extends Thread {
 	
 		// print fibs output
 		// currently gameplay and tormonitor modes are filtered
-		if (server.getFibsmode() > 1) {
+		if (server.getFibsmode() > FIBS_MODE_WATCH) {
 			if (filteredInput != null) {
 				linePrinter.printDebugln(filteredInput);
 			}
@@ -446,8 +458,9 @@ public class FibsRunner extends Thread {
 		//// END: GET SAVED MATCHES
 	
 		// save last board state
-		if (in.startsWith("board:")) {
+		if (inputHasBoard) {
 			lastboard = in;
+			lastBoard = new FibsBoard(in);
 			if(waitLastBoard) {
 				waitLastBoard = false;
 				lastBoardSet = true;
@@ -462,7 +475,7 @@ public class FibsRunner extends Thread {
 		// AUTOINVITE PREFERRED PLAYERS (from PlayerPrefs)
 		if (in.contains("wins a") || in.contains("has left the game")
 				|| (in.startsWith("7 ") && in.contains("logs in"))) {
-			if (server.getFibsmode() < 2 && server.prefs.isAutoinvite()) {
+			if (server.getFibsmode() < FIBS_MODE_GAME_PLAY && server.prefs.isAutoinvite()) {
 	
 				for (String opp : server.prefs.getPreferredOpps().keySet()) {
 	
@@ -483,18 +496,18 @@ public class FibsRunner extends Thread {
 				if (!opp.equals("")
 						&& in.toLowerCase().contains(
 								" " + opp.toLowerCase() + " ")) {
-					if(lastmatch != null && server.getFibsmode() == 2 && lastmatch.getWaitfor().equals(opp)) {
+					if(lastmatch != null && server.getFibsmode() == FIBS_MODE_GAME_PLAY && lastmatch.getWaitfor().equals(opp)) {
 						server.printDebug("WAITFOR OPP LOGGED IN, inviting");
 						sleepFibs(200);
 						server.fibsout.println("invite " + opp);
-					} else	if (server.getFibsmode() < 2
+					} else	if (server.getFibsmode() < FIBS_MODE_GAME_PLAY
 							&& server.prefs.isAutoinvitesaved()) {
 						server.fibsout.println("tell " + opp + " Hi " + opp
 								+ "! Let's play our saved match.");
 						server.printDebug("Inviting for SAVED MATCH (" + opp
 								+ ")");
 						server.startInviter(opp, 0);
-					} else if (server.getFibsmode() == 2) {
+					} else if (server.getFibsmode() == FIBS_MODE_GAME_PLAY) {
 						server.fibsout.println("tell " + opp + " Hi " + opp
 								+ "! There is still a saved match to finish.");
 					}
@@ -506,7 +519,7 @@ public class FibsRunner extends Thread {
 	
 		// JOIN AN INVITATION
 		if (in.contains("wants to play a") && in.startsWith("board:")) {
-			//
+			// fibs bug?
 		}
 		if (in.contains("wants to play a") && !in.contains("unlimited match") 
 				&& !in.contains("saved match") && !isInvitationInProgress()
@@ -517,7 +530,7 @@ public class FibsRunner extends Thread {
 				// contains 'point match' could cause exception.
 				// Don't allow.
 				&& !in.startsWith("board:")
-				&& server.getFibsmode() < 2) {
+				&& server.getFibsmode() < FIBS_MODE_GAME_PLAY) {
 			
 			// If 'show saved' didn't get through to fibs after login
 			// or wasn't issued after manual login the 'savedMatches'
@@ -890,10 +903,25 @@ public class FibsRunner extends Thread {
 		}
 	}
 
+	private boolean inputHasBoard(String input) {
+		return input.startsWith("board:");
+	}
+
+	private FibsBoard inputGetBoard(String input) {
+		return new FibsBoard(input);
+	}
+
 	private synchronized void processGamePlay(String in) {
 
 		if (in == null)
 			return;
+
+		boolean inputHasBoard = inputHasBoard(in);
+		FibsBoard inputBoard = null;
+
+		if (inputHasBoard) {
+			inputBoard = new FibsBoard(in);
+		}
 
 		///// PROCESS RESUME PARAMS ////
 		// If match was started with resume=true this section is processed
@@ -1317,21 +1345,26 @@ public class FibsRunner extends Thread {
 
 			//// GET EQUITITES before deciding on opp resign attempt
 			server.printDebug("EXTRA get equities -> lastboard: " + lastboard);
-            String[] split = lastboard.split(":");
+
+			//-//
+            /*String[] split = lastboard.split(":");
             split[32] = split[42] == "1" ? "-1" : "1";
             String eqboard = ""; boolean first = true;
             for(String s : split) {
                 if(first) first = false;
                 else eqboard += ":";
                 eqboard += s;
-            }
+            }*/
+
+            String eqboard = getEquitiesBoard(lastBoard); //-
+
 			server.printDebug("EXTRA get equities ->   eqboard: " + eqboard);
 			server.gnubg.execEval(eqboard);
 
 			server.printDebug("EXTRA get equities finished");
 			
 			// OPP RESIGN NORMAL
-			if (resignpts == getCube(lastboard)) {
+			if (resignpts == lastBoard.getDoublingCube()) {
 
 				// there's chance for win/gammon, so reject
 				if(match.equities[1] > 0.01 ) {
@@ -1358,7 +1391,7 @@ public class FibsRunner extends Thread {
 				}					
 			} 
 			// OPP RESIGN GAMMON
-			else if (resignpts == getCube(lastboard) * 2) {
+			else if (resignpts == lastBoard.getDoublingCube() * 2) {
 				
 				// there's chance to win backgammon, so reject
 				if(match.equities[2] > 0.0) {
@@ -1385,7 +1418,7 @@ public class FibsRunner extends Thread {
 				} 	
 			} 
 			// OPP RESIGN BACKGAMMON
-			else if (resignpts == getCube(lastboard) * 3) {
+			else if (resignpts == lastBoard.getDoublingCube() * 3) {
 
 				server.printDebug("** RESIGN bg ACCEPTED [resignpts: " + resignpts
 						+ " ml: " + match.getMl() + " score: " + match.getScore()[0] 
@@ -1405,27 +1438,28 @@ public class FibsRunner extends Thread {
 		if (match.getRound() > 0) {
 			
 			// GREET OPPONENT 
-			if (!match.oppgreeted && in.startsWith("board:"))
-				greetOpponent(in);
+			if (!match.oppgreeted && inputHasBoard)
+				greetOpponent(inputBoard);
 
 			// FIRST ROUND
-			if (match.getRound() == 1 && in.startsWith("board:")) {
+			if (match.getRound() == 1 && inputHasBoard) {
 
-				server.printDebug("setting score to: " + getScore(in)[0] + " "
-						+ getScore(in)[1]);
+				server.printDebug("setting score to: " + inputBoard.getMyScore() + " "
+						+ inputBoard.getOppScore());
 
-				match.setScore(new int[] { getScore(in)[0], getScore(in)[1] });
+				//-//match.setScore(new int[] { getScore(in)[0], getScore(in)[1] });
+				match.setScore(inputBoard.getScore());
 				server.printDebug(" [ ml: " + match.getMl() + " opp's score: "
-						+ getScore(in)[1] + " crawford score: "
+						+ inputBoard.getOppScore() + " crawford score: "
 						+ match.getCrawfordscore() + " wasResumed: "
 						+ wasResumed + " turn: " + match.getTurn()[0] + " " + match.getTurn()[1] +" ]");
 				// CRAWFORD
 				if (match.getMl() > 1
-						&& (match.getMl() - getScore(in)[1] == 1)
+						&& (match.getMl() - inputBoard.getOppScore() == 1)
 						&& !match.oneToWin()) {
 
 					if (match.getCrawfordscore() == -1
-							&& !(wasResumed && didCrawford(in))) {
+							&& !(wasResumed && inputBoard.didCrawford())) {
 						match.setCrawford(true);
 						match.setCrawfordscore(match.getScore()[0]);
 						server.printDebug("setting CRAWFORD ON");
@@ -1447,12 +1481,15 @@ public class FibsRunner extends Thread {
 			///// MY TURN ////////////////////
 			if (match.isMyTurn()) {
 	
-				if (in.startsWith("board:") && wResumeBoard) {
+				if (inputHasBoard && wResumeBoard) {
 					server.printDebug("got resume board, sending to bgsocket");
-					setResumeCube(in);
+					//-//setResumeCube(in);
+					match.setCube(inputBoard.getDoublingCube()); //-
 					wResumeBoard = false;
-					setDirection(in);
-					if (getDice(in)[0] > 0 && getDice(in)[1] > 0) {
+					//-//setDirection(in);
+					match.setShiftmove(inputBoard.getDirection() == 1); //-
+
+					if (inputBoard.getMyDice().getDie1() > 0 && inputBoard.getMyDice().getDie2() > 0) {
 						match.setTurn(new int[] { 0, 1 });
 					}
 					match.setRound(match.getRound() + 1);
@@ -1468,10 +1505,11 @@ public class FibsRunner extends Thread {
 					match.touchStamps();
 					return;
 				}
-				if (in.startsWith("board:") && wRollBoard) {
-					server.printDebug("got roll board" + (canMove(in) > 0 ? ", sending to bgsocket" : ""));
+				if (inputHasBoard && wRollBoard) {
+					server.printDebug("got roll board" + (inputBoard.getCanMove() > 0 ? ", sending to bgsocket" : ""));
 					wRollBoard = false;
-					setDirection(in);
+					//-//setDirection(in);
+					match.setShiftmove(inputBoard.getDirection() == 1); //-
 
 					//// GET EQUITITES
 					server.gnubg.execEval(in);
@@ -1490,7 +1528,7 @@ public class FibsRunner extends Thread {
 					} else {
 						
 						if(match.equities[0] < 0.005 && match.equities[3] < 0.03) {
-							if(getOnBar(in)[0] == 0) {
+							if(inputBoard.getIHaveOnBar() == 0) {
 
 								server.printDebug("**** !! RESIGNING NON-1-ptr match -- NORMAL");
 								sleepFibs(200);
@@ -1518,13 +1556,13 @@ public class FibsRunner extends Thread {
 					} //// END: RESIGN ////
 					
 					wMoveBoard = true;
-                    if(canMove(in) > 0) {
+                    if(inputBoard.getCanMove() > 0) {
                         server.gnubg.execBoard(in);
                     }
 					return;
 				}
 				
-				if((in.startsWith("board:") || in.startsWith("You can't move") ) && wMoveBoard) {
+				if((inputHasBoard || in.startsWith("You can't move") ) && wMoveBoard) {
 					wMoveBoard = false;
 					match.touchStamps();
 					match.setTurn(new int[] { 0, 1 });
@@ -1563,8 +1601,9 @@ public class FibsRunner extends Thread {
 			//////// OPP'S TURN ////////////////////
 			} else if (match.isOppsTurn()) {
 
-				if(in.startsWith("board:") && wResumeBoard) {
-					setResumeCube(in);
+				if(inputHasBoard && wResumeBoard) {
+					//-//setResumeCube(in);
+					match.setCube(inputBoard.getDoublingCube());
 					wResumeBoard = false;
 				}
 				
@@ -1580,7 +1619,7 @@ public class FibsRunner extends Thread {
 					server.printDebug("got 'OPP can't move'");
 
 					match.touchStamps();
-					if (match.getMl() > 1 && canDouble(lastboard)[0]
+					if (match.getMl() > 1 && lastBoard.iMayDouble()
 							&& !match.isCrawford() && !match.oneToWin()
 							&& !(match.wasResumed() && match.getRound() == 1)) {
 
@@ -1603,7 +1642,7 @@ public class FibsRunner extends Thread {
 					return;
 				}
 
-				if (in.startsWith("board:") && wOppMoveBoard) {
+				if (inputHasBoard && wOppMoveBoard) {
 
                     server.printDebug("got OPP move board...");
 					wOppMoveBoard = false;
@@ -1618,21 +1657,21 @@ public class FibsRunner extends Thread {
 						server.fibsout.println("double");
 					
 					} else */
-                    if (match.getMl() > 1 && canDouble(in)[0]
+                    if (match.getMl() > 1 && inputBoard.iMayDouble()
 							&& !match.isCrawford() && !match.oneToWin()) {
 
-						server.printDebug("sending. [candouble: " + canDouble(in)[0]
-								+ " " + canDouble(in)[1] + " ml: "
-								+ match.getMl() + " score: " + getScore(in)[0]
-								+ " " + getScore(in)[1] + " crawford: "
+						server.printDebug("sending. [candouble: " + inputBoard.iMayDouble()
+								+ " " + inputBoard.oppMayDouble() + " ml: "
+								+ match.getMl() + " score: " + inputBoard.getMyScore()
+								+ " " + inputBoard.getOppScore() + " crawford: "
 								+ match.isCrawford() + "]");
 						server.gnubg.execBoard(in);
 
 					} else {
 						server.printDebug("NOT sending. [candouble: "
-								+ canDouble(in)[0] + " " + canDouble(in)[1]
+								+ inputBoard.iMayDouble() + " " + inputBoard.oppMayDouble()
 								+ " ml: " + match.getMl() + " score: "
-								+ getScore(in)[0] + " " + getScore(in)[1]
+								+ inputBoard.getMyScore() + " " + inputBoard.getOppScore()
 								+ " crawford: " + match.isCrawford() + "]");
 					}
 
@@ -1667,7 +1706,7 @@ public class FibsRunner extends Thread {
 						return;
 					}
 				}
-				if (in.startsWith("board:") && wOppDoubleBoard) {
+				if (inputHasBoard && wOppDoubleBoard) {
 
                     server.printer.printDebugln(" *** My turn ***", "");
                     server.printDebug("");
@@ -1682,7 +1721,8 @@ public class FibsRunner extends Thread {
 	} //// END: PROCESSGAMEPLAY
 
 	private void startMatch(String in) {
-		if(server.getFibsmode() == 2) {
+		if(server.getFibsmode() == FIBS_MODE_GAME_PLAY) {
+			// should never happen
 			server.printDebug(" ** !!! BUG !!! ** ");
 			return;
 		}
@@ -1874,16 +1914,15 @@ public class FibsRunner extends Thread {
 		server.fibsout.println("who " + match.getPlayer1());
 	}
 
-	private void greetOpponent(String board) {
+	private void greetOpponent(FibsBoard _board) {
 		if (match.oppgreeted)
 			return;
 
 		if(match.getRound() == 1 && match.oppgreetphase == 0) {
 			
 			match.oppgreetphase = 1;
-			String[] split = board.split(":");
 			sleepFibs(200);
-			server.fibsout.println("kibitz Hi " + split[2] + ", gl!");
+			server.fibsout.println("kibitz Hi " + _board.getOppName() + ", gl!");
 			sleepFibs(200);
 			server.fibsout.println("kibitz I am a computer program, kibitz 'tell me more' if you want.");
 			
@@ -1913,106 +1952,16 @@ public class FibsRunner extends Thread {
 		}
 	}
 
-	private int getCube(String board) {
-		String[] split = board.split(":");
-		int a = -1;
-		try {
-			a = Integer.parseInt(split[37]);
-
-		} catch (NumberFormatException e) {
-
+	private String getEquitiesBoard(FibsBoard board) {
+		String[] split = board.getRawInput().split(":");
+		split[32] = board.getDirection() == 1 ? "-1" : "1";
+		String eqBoard = ""; boolean first = true;
+		for(String s : split) {
+			if(first) first = false;
+			else eqBoard = eqBoard.concat(":");
+			eqBoard = eqBoard.concat(s);
 		}
-		return a;
-	}
-/*
-	private int[] getOnHome(String board) {
-		String[] split = board.split(":");
-		int a = -1;
-		int b = -1;
-		try {
-			a = Integer.parseInt(split[45]);
-			b = Integer.parseInt(split[46]);
-		} catch (NumberFormatException e) {
-
-		}
-		return new int[] { a, b };
-	}*/
-	
-	private int[] getOnBar(String board) {
-		String[] split = board.split(":");
-		int a = -1;
-		int b = -1;
-		try {
-			a = Integer.parseInt(split[47]);
-			b = Integer.parseInt(split[48]);
-		} catch (NumberFormatException e) {
-
-		}
-		return new int[] { a, b };
-	}
-	private int[] getDice(String board) {
-		String[] split = board.split(":");
-		int a = -1;
-		int b = -1;
-		try {
-			a = Integer.parseInt(split[33]);
-			b = Integer.parseInt(split[34]);
-		} catch (NumberFormatException e) {
-
-		}
-
-		return new int[] { a, b };
-	}
-
-	private int[] getScore(String board) {
-		String[] split = board.split(":");
-		int a = -1;
-		int b = -1;
-		try {
-			a = Integer.parseInt(split[4]);
-			b = Integer.parseInt(split[5]);
-		} catch (NumberFormatException e) {
-
-		}
-
-		return new int[] { a, b };
-	}
-
-	private boolean[] canDouble(String board) {
-
-		String[] split = board.split(":");
-
-		return new boolean[] { (split[38].equals("1")), (split[39].equals("1")) };
-	}
-
-    private int canMove(String board) {
-        String[] split = board.split(":");
-        try {
-            return Integer.parseInt(split[49]);
-        } catch(NumberFormatException e) {
-            return -1;
-        }
-    }
-
-	private boolean didCrawford(String board) {
-		String[] split = board.split(":");
-		return (split[51].equals("1"));
-	}
-	
-	private void setDirection(String board) {
-
-		String [] split = board.split(":");
-		if (split[42].equals("1")) {
-			match.setShiftmove(true);
-		} else if (split[42].equals("-1")) {
-			match.setShiftmove(false);
-		}
-	}
-
-	private void setResumeCube(String board) {
-		String [] split = board.split(":");
-		int rcube = Integer.parseInt(split[37]);
-		match.setCube(rcube);
+		return eqBoard;
 	}
 
 	public void getSavedMatches() {
@@ -2084,7 +2033,6 @@ public class FibsRunner extends Thread {
 		+ server.prefs.getPassword();
 
 		server.fibsout.println(cmd);
-		//server.printDebug("Sent login line");
 	}
 
 	protected void printMatchInfo() {
@@ -2100,7 +2048,6 @@ public class FibsRunner extends Thread {
 				+ (match.getTotalTime() / 1000 - match.getTotalTime() / 1000 / 60 * 60)
 				+ " ]" + UnixConsole.RESET;
 		matchinfoPrinter.printDebug(matchinfoStr);
-		//match.stat.putLastLog(tmp);
 	}
 
 	protected void printFibsCommand(String fibscommand) {
