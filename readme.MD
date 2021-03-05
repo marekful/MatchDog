@@ -36,7 +36,7 @@ If you abuse FIBS, you will be banned.
     - autojoin, autoinvite, crawford
 * option to send commands to fibs/gnubg/gnubg socket from command line
 * timeout for inactivity
-* player statistics - keeps logs detailed log of all games and matches (including dropped ones with detail on all drops/resumes)
+* player statistics - keeps detailed log of all games and matches (including dropped ones with detail on all drops/resumes)
 * statistics writer - write to stdout or file
 * statistics uploader - upload player statistics file to ftp server and send url to user on request
 
@@ -145,6 +145,13 @@ and put in the players map at index 0.
 If no command line parameter is given or not a number is given
 or there is no user preferences object at that index of the
 map, the default user at index 0 is used.
+
+By default, MatchDog prints an awful lot of information about what's going on to stdout 
+with console escape sequences to colour text and background to differentiate 
+where the information came from and also accepts user input from stdin to control 
+various things in the server while it's running, mostly for debugging purposes. 
+By passing 0 as a second command line argument, stdin and stdout are not attached 
+and MatchDog runs silently.
 
 
 **Example gnubg initialisation command sequence**
