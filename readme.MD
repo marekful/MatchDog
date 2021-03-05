@@ -130,7 +130,7 @@ Make sure files compile without errors. Ignore 'Notes' from jcons.
 
 ***USAGE***
 
-On a Linux a system, change directory to change directory to `[PROJECT_ROOT]/bin`  where the compiled java .class
+On a Linux a system, change directory to `[PROJECT_ROOT]/bin`  where the compiled java .class
 files are located and issue the following command in a bash shell
 (assuming that the java binaries are on the path):
 
