@@ -65,7 +65,8 @@ public class Prefs {
                     case "mapStringInteger" :
                         Map<String, Integer> m;
                         m = ((HashMap<String, Integer>) field.get(this));
-                        m.put(keyName, (int) value);
+                        String [] val = value.toString().split(" ");
+                        m.put(val[0], Integer.parseInt(val[1]));
                         break;
                     case "primitive" :
                         field.set(this, value);

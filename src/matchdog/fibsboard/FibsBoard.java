@@ -63,8 +63,8 @@ public class FibsBoard {
 
         String [] parts = in.split(":");
 
-        if (parts.length != 52) {
-            throw new IllegalArgumentException(String.format("Invalid input length: %s", in));
+        if (parts.length != 53) {
+            throw new IllegalArgumentException(String.format("Invalid input length: %d ", parts.length));
         }
 
         setOppName(parts[2]);
