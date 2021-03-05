@@ -76,6 +76,9 @@ MatchDogServer should be able to open and also to connect
 to a socket on the localhost on the port number specified
 in `config/matchdog.prefs`.
 
+MatchDog has been tested with gnubg 1.04.000 and 1.05.002. Since there were changes
+to the external interface since, it's not guaranteed to work with versions above.
+
 **FIBS:**
 MatchDog's FIBS player must use the following 'toggle' settings
 to work correctly:
