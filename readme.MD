@@ -80,8 +80,8 @@ MatchDog has been tested with gnubg 1.04.000 and 1.05.002. Since there were chan
 to the external interface since, it's not guaranteed to work with versions above.
 
 **FIBS:**
-MatchDog's FIBS player must use the following 'toggle' settings
-to work correctly:
+MatchDog's FIBS player must have `set boardstyle: 3` and use the following `toggle` settings
+to work correctly with MatchDog:
 ```allowpip        YES
 autoboard       YES
 autodouble      NO
