@@ -12,65 +12,65 @@ public class BGRunner  {
 
     // gnubg process
 	private Process p;
-	private final String[] command;
+	private final String[] gnubgCommands;
 	private final MatchDog server;
-	private final BufferedDebugPrinter p_printer;
+	private final BufferedConsolePrinter printer;
 
-    private BufferedReader p_input;
-    private PrintWriter p_output;
+    private BufferedReader pIn;
+    private PrintWriter pOut;
 
     // gnubg external
     private Socket s = null;
 
-    private BufferedReader s_input;
-    private PrintWriter s_output;
+    private BufferedReader sIn;
+    private PrintWriter sOut;
 
-    protected BufferedDebugPrinter s_printer;
-    protected BufferedDebugPrinter s_printer2;
-    private boolean connected, evalcmd;
+    protected BufferedConsolePrinter matchPrinter;
+    protected BufferedConsolePrinter eqPrinter;
+    private boolean connected, evalCmd;
 
 	BGRunner(String[] command, MatchDog server) {
 
         // proc
 		p = null;
-		this.command = command;
+		this.gnubgCommands = command;
 		this.server = server;
-		p_printer = new BufferedDebugPrinter(
+		printer = new BufferedConsolePrinter(
 			server, "gnubg:", UnixConsole.LIGHT_YELLOW, UnixConsole.BACKGROUND_BLUE
 		);
 
         // sock
         connected = false;
-        evalcmd = false;
+        evalCmd = false;
 
-        s_printer = new BufferedDebugPrinter(
+        matchPrinter = new BufferedConsolePrinter(
             server, "gnubg:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_BLUE
         );
-        s_printer2 = new BufferedDebugPrinter(
+        eqPrinter = new BufferedConsolePrinter(
             server, "Equities:", UnixConsole.LIGHT_YELLOW, UnixConsole.BACKGROUND_BLACK
         );
 	}
 
     // proc
 	public boolean launch() {
-        for (String cmd : command) {
+        for (String cmd : gnubgCommands) {
             try {
-                p_printer.printDebugln("Trying to launch gnubg binary");
+                printer.printDebugln("Trying to launch gnubg binary");
                 p = Runtime.getRuntime().exec(cmd);
-                p_printer.printDebugln("gnubg running (" + cmd + ")");
+                printer.printDebugln("gnubg running (" + cmd + ")");
                 break;
             } catch (Exception e) {
-                p_printer.printDebugln("gnubg not found at: " + cmd);
+                printer.printDebugln("gnubg not found at: " + cmd);
             }
         }
 
         if (p == null) {
-            p_printer.printDebugln("Couldn't launch gnubg, exiting...");
+            printer.printDebugln("Couldn't launch gnubg, exiting...");
             return false;
         }
 
-        p_input = new BufferedReader(new InputStreamReader(p.getInputStream()));
-        p_output = new PrintWriter(p.getOutputStream(), true);
+        pIn = new BufferedReader(new InputStreamReader(p.getInputStream()));
+        pOut = new PrintWriter(p.getOutputStream(), true);
 
         return true;
     }
@@ -131,7 +131,7 @@ public class BGRunner  {
     }
 
     private void println(String str) {
-        p_output.println(str);
+        pOut.println(str);
         try {
             Thread.sleep(24);
         } catch (InterruptedException e) {
@@ -142,9 +142,8 @@ public class BGRunner  {
 
     protected void processInput() {
         try {
-            //server.printDebug(" p.avail: " + p_input.ready());
-            while((p_input.ready())) {
-                p_printer.printDebugln(p_input.readLine());
+            while((pIn.ready())) {
+                printer.printDebugln(pIn.readLine());
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -157,27 +156,26 @@ public class BGRunner  {
     }
 
     public synchronized void execEval(String board) {
-        setEvalcmd(true);
+        setEvalCmd(true);
         execCommand("evaluation fibsboard " + board + " PLIES 3 CUBE ON CUBEFUL");
-        setEvalcmd(false);
+        setEvalCmd(false);
     }
 
     private synchronized void execCommand(String lineIn) {
 
         if(lineIn.trim().equals("")) {
-            s_printer.printDebugln("*** !! *** NOT SENDING empty line");
+            matchPrinter.printDebugln("*** !! *** NOT SENDING empty line");
             return;
         }
 
-        GnubgCommand r = new GnubgCommand(server, s_input, s_output, s_printer, s_printer2, lineIn.trim(), isEvalcmd());
+        GnubgCommand r = new GnubgCommand(server, sIn, sOut, matchPrinter, eqPrinter, lineIn.trim(), isEvalCmd());
 
         // Process evalcmd synchronously (in the same thread) because these equities are used
         // to decide resignation later in the same invocation of FibsRunner.processGamePlay().
         // Process board state asynchronously (in separate thread) so FibsRunner can process
         // new input while waiting for gnubg's response.
-
         try {
-            if(isEvalcmd()) {
+            if(isEvalCmd()) {
                 r.run();
             } else {
                 (new Thread(r)).start();
@@ -200,8 +198,8 @@ public class BGRunner  {
                     server.systemPrinter.printDebugln("Successfully connected to bg socket");
                     connected = true;
                 }
-                s_input = new BufferedReader(new InputStreamReader(s.getInputStream()));
-                s_output = new PrintWriter(s.getOutputStream(), true);
+                sIn = new BufferedReader(new InputStreamReader(s.getInputStream()));
+                sOut = new PrintWriter(s.getOutputStream(), true);
 
             } catch(InterruptedException e) {
                 return;
@@ -216,8 +214,8 @@ public class BGRunner  {
 
     private void closeSocket() {
         try {
-            s_input.close();
-            s_output.close();
+            sIn.close();
+            sOut.close();
             s.close();
             connected = false;
         } catch (IOException e) {
@@ -226,19 +224,19 @@ public class BGRunner  {
         }
     }
 
-    private boolean isEvalcmd() {
-        return evalcmd;
+    private boolean isEvalCmd() {
+        return evalCmd;
     }
 
-    private void setEvalcmd(boolean evalcmd) {
-        this.evalcmd = evalcmd;
+    private void setEvalCmd(boolean evalCmd) {
+        this.evalCmd = evalCmd;
     }
 
     public PrintWriter getScokOut() {
-        return s_output;
+        return sOut;
     }
 
     public PrintWriter getProcOut() {
-        return p_output;
+        return pOut;
     }
 }

@@ -49,8 +49,8 @@ public class FibsRunner extends Thread {
 	String host;
 	int port;
 	MatchDog server;
-	BufferedFibsDebugPrinter linePrinter;
-	BufferedDebugPrinter matchinfoPrinter;
+	BufferedFibsConsolePrinter linePrinter;
+	BufferedConsolePrinter matchinfoPrinter;
 	Match match, lastmatch;
 	String lastboard, filteredInput;
 	boolean processNextLine, terminating;
@@ -144,11 +144,11 @@ public class FibsRunner extends Thread {
 		//final String pid = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
 		setName("FibsRunner-" + this.id);
 
-        linePrinter = new BufferedFibsDebugPrinter(
+        linePrinter = new BufferedFibsConsolePrinter(
             server, "fibs:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_GREEN
         );
 
-        matchinfoPrinter = new BufferedDebugPrinter(
+        matchinfoPrinter = new BufferedConsolePrinter(
 			server, "MatchInfo:", UnixConsole.BLACK, UnixConsole.BACKGROUND_YELLOW
 		);
 	}

@@ -45,7 +45,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 
     boolean contd, welcome;
 	
-	BufferedDebugPrinter printer, systemPrinter;
+	BufferedConsolePrinter printer, systemPrinter;
 	
 	MatchDog(ProgramPrefs progPrefs, PlayerPrefs prefs, HashMap<Integer, String> bl, String hostName, boolean listenLocal) {
 
@@ -79,10 +79,10 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 		// global blacklist
 		this.bl = bl;
 		
-		printer = new BufferedDebugPrinter(
+		printer = new BufferedConsolePrinter(
 			this, "MatchDog:", UnixConsole.BLACK, UnixConsole.BACKGROUND_WHITE
 		);
-		systemPrinter = new BufferedDebugPrinter(
+		systemPrinter = new BufferedConsolePrinter(
 			this, "system:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_RED
 		);
 	}
@@ -408,7 +408,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 		}
 		if(!out.equals(System.out)) {
 			listeners.remove(listenerId);
-            BufferedDebugPrinter.removeOutputBuffer(output);
+            BufferedConsolePrinter.removeOutputBuffer(output);
 		}
 	}
 
@@ -635,8 +635,8 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
         fibs.linePrinter.setSuspended(output, true);
         systemPrinter.setSuspended(output, true);
         printer.setSuspended(output, true);
-        gnubg.s_printer.setSuspended(output, true);
-        gnubg.s_printer2.setSuspended(output, true);
+        gnubg.matchPrinter.setSuspended(output, true);
+        gnubg.eqPrinter.setSuspended(output, true);
         fibs.matchinfoPrinter.setSuspended(output, true);
     }
 
@@ -644,8 +644,8 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
         fibs.linePrinter.setSuspended(output, false);
         systemPrinter.setSuspended(output, false);
         printer.setSuspended(output, false);
-        gnubg.s_printer.setSuspended(output, false);
-        gnubg.s_printer2.setSuspended(output, false);
+        gnubg.matchPrinter.setSuspended(output, false);
+        gnubg.eqPrinter.setSuspended(output, false);
         fibs.matchinfoPrinter.setSuspended(output, false);
     }
 

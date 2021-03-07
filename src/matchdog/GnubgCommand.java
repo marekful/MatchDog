@@ -15,16 +15,16 @@ public class GnubgCommand implements Runnable {
     MatchDog server;
     BufferedReader input;
     PrintWriter output;
-    BufferedDebugPrinter printer;
-    BufferedDebugPrinter eqPrinter;
+    BufferedConsolePrinter printer;
+    BufferedConsolePrinter eqPrinter;
     String command;
     boolean isEvalcmd;
 
     GnubgCommand(MatchDog server,
                  BufferedReader input,
                  PrintWriter output,
-                 BufferedDebugPrinter printer,
-                 BufferedDebugPrinter eqPrinter,
+                 BufferedConsolePrinter printer,
+                 BufferedConsolePrinter eqPrinter,
                  String command,
                  boolean isEvalcmd)
     {
