@@ -324,6 +324,11 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                     unSuspendOutput(output);
                     restartFibs();
                     continue;
+                } else if (line.equals("rebg")) {
+                    leaveShell(output);
+                    unSuspendOutput(output);
+                    gnubg.restartGnubg();
+                    continue;
                 } else if (line.equals("uptime")) {
                     output.print(TimeAgo.fromMs(System.currentTimeMillis() - serverStartedAt.getTime()));
                     output.println();
@@ -463,7 +468,6 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
             return;
         }
         gnubg.setup();
-
         gnubg.connectSocket();
 	}
 
@@ -471,6 +475,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 		if(gnubg == null)
 			return;
 		gnubg.terminate();
+		gnubg = null;
         systemPrinter.printDebugln("Gnubg terminated");
 	}
 	

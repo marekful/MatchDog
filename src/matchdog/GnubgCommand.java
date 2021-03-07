@@ -96,16 +96,15 @@ public class GnubgCommand implements Runnable {
 
             // this used to be a bug catcher... still need it?
             if(i == 0) {
-                printer.printDebugln(" ** !! ** trying next line for "
+                printer.printDebugln(" ** !!00 ** << Restarting gnubg >> "
                         + (isEvalcmd ? "EVAL" : "BOARD") + " -   cmd: " + command);
-                printer.printDebugln(" ** !! ** trying next line for "
-                        + (isEvalcmd ? "EVAL" : "BOARD") + " - reply: " + rawReply);
+                printer.printDebugln("  reply: " + rawReply);
             } else {
-                printer.printDebugln(" ** !! ** GIVING UP for "
+                printer.printDebugln(" ** !!11 ** << Restarting gnubg >> "
                         + (isEvalcmd ? "EVAL" : "BOARD") + " -   cmd: " + command);
-                printer.printDebugln(" ** !! ** GIVING UP for "
-                        + (isEvalcmd ? "EVAL" : "BOARD") + " - reply: " + rawReply);
-                return;
+                printer.printDebugln("  reply: " + rawReply);
+
+                throw new RuntimeException("Unexpected response from gnubg");
             }
         }
 

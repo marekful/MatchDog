@@ -116,6 +116,20 @@ public class BGRunner  {
 		p.destroy();
 	}
 
+	public void restartGnubg() {
+        try {
+            Thread.sleep(150);
+            terminate();
+            Thread.sleep(150);
+            if (!launch()) {
+                server.stopServer();
+                return;
+            }
+            setup();
+            connectSocket();
+        } catch (InterruptedException ignored) {}
+    }
+
     private void println(String str) {
         p_output.println(str);
         try {
@@ -161,10 +175,16 @@ public class BGRunner  {
         // to decide resignation later in the same invocation of FibsRunner.processGamePlay().
         // Process board state asynchronously (in separate thread) so FibsRunner can process
         // new input while waiting for gnubg's response.
-        if(isEvalcmd()) {
-            r.run();
-        } else {
-            (new Thread(r)).start();
+
+        try {
+            if(isEvalcmd()) {
+                r.run();
+            } else {
+                (new Thread(r)).start();
+            }
+        } catch (RuntimeException e) {
+            server.systemPrinter.printDebugln("Restarting gnubg now");
+            restartGnubg();
         }
     }
 
@@ -196,7 +216,10 @@ public class BGRunner  {
 
     private void closeSocket() {
         try {
+            s_input.close();
+            s_output.close();
             s.close();
+            connected = false;
         } catch (IOException e) {
             server.systemPrinter.printDebugln("Exception in BGRunner.closeSocket():" + e.getMessage());
             e.printStackTrace();
