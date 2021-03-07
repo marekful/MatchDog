@@ -12,9 +12,9 @@ public class BGRunner  {
 
     // gnubg process
 	private Process p;
-	private String[] command;
-	private MatchDog server;
-	private BufferedDebugPrinter p_printer;
+	private final String[] command;
+	private final MatchDog server;
+	private final BufferedDebugPrinter p_printer;
 
     private BufferedReader p_input;
     private PrintWriter p_output;
@@ -26,6 +26,7 @@ public class BGRunner  {
     private PrintWriter s_output;
 
     protected BufferedDebugPrinter s_printer;
+    protected BufferedDebugPrinter s_printer2;
     private boolean connected, evalcmd;
 
 	BGRunner(String[] command, MatchDog server) {
@@ -35,7 +36,7 @@ public class BGRunner  {
 		this.command = command;
 		this.server = server;
 		p_printer = new BufferedDebugPrinter(
-			server, "gnubg:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_BLUE
+			server, "gnubg:", UnixConsole.LIGHT_YELLOW, UnixConsole.BACKGROUND_BLUE
 		);
 
         // sock
@@ -44,6 +45,9 @@ public class BGRunner  {
 
         s_printer = new BufferedDebugPrinter(
             server, "gnubg:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_BLUE
+        );
+        s_printer2 = new BufferedDebugPrinter(
+            server, "Equities:", UnixConsole.LIGHT_YELLOW, UnixConsole.BACKGROUND_BLACK
         );
 	}
 
@@ -79,10 +83,12 @@ public class BGRunner  {
 
         println("set eval sameasanalysis off");
 
+        println("set chequer evaluation prune on");
         if(server.prefs.getMaxml() == 1) {
             println("set evaluation chequer eval cubeful off");
         }
-        //println("set threads 8");
+        println("set threads 4");
+
         println("set evaluation chequer eval plies " + checkquerply);
         println("set evaluation cubedecision eval plies " + cubedecply);
 
@@ -90,6 +96,16 @@ public class BGRunner  {
             println("set evaluation movefilter " + server.prefs.getMoveFilter(i) );
             server.printDebug(server.prefs.getMoveFilter(i));
         }
+
+        println("set rollout chequer plies " + checkquerply);
+        println("set rollout cubedecision plies " + cubedecply);
+
+        for(int i = 0; i < 10; i++) {
+            println("set movefilter " + server.prefs.getMoveFilter(i) );
+            server.printDebug(server.prefs.getMoveFilter(i));
+        }
+
+        //println("save settings");
 
         println("external localhost:" + server.prefs.getGnuBgPort());
 	}
@@ -139,7 +155,7 @@ public class BGRunner  {
             return;
         }
 
-        GnubgCommand r = new GnubgCommand(server, s_input, s_output, s_printer, lineIn.trim(), isEvalcmd());
+        GnubgCommand r = new GnubgCommand(server, s_input, s_output, s_printer, s_printer2, lineIn.trim(), isEvalcmd());
 
         // Process evalcmd synchronously (in the same thread) because these equities are used
         // to decide resignation later in the same invocation of FibsRunner.processGamePlay().

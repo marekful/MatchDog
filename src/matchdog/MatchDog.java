@@ -262,7 +262,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                     leaveShell(output);
                     continue;
                 } else if (line.equals("111")) {
-                    output.print(prefs.showPrefs());
+                    output.print(Arrays.stream(prefs.showPrefs()).sequential());
                     output.println();
                     leaveShell(output);
                     continue;
@@ -631,6 +631,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
         systemPrinter.setSuspended(output, true);
         printer.setSuspended(output, true);
         gnubg.s_printer.setSuspended(output, true);
+        gnubg.s_printer2.setSuspended(output, true);
         fibs.matchinfoPrinter.setSuspended(output, true);
     }
 
@@ -639,6 +640,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
         systemPrinter.setSuspended(output, false);
         printer.setSuspended(output, false);
         gnubg.s_printer.setSuspended(output, false);
+        gnubg.s_printer2.setSuspended(output, false);
         fibs.matchinfoPrinter.setSuspended(output, false);
     }
 

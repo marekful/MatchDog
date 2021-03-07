@@ -1,10 +1,10 @@
 package matchdog;
 
+import jcons.src.com.meyling.console.UnixConsole;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.Buffer;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -16,6 +16,7 @@ public class GnubgCommand implements Runnable {
     BufferedReader input;
     PrintWriter output;
     BufferedDebugPrinter printer;
+    BufferedDebugPrinter eqPrinter;
     String command;
     boolean isEvalcmd;
 
@@ -23,6 +24,7 @@ public class GnubgCommand implements Runnable {
                  BufferedReader input,
                  PrintWriter output,
                  BufferedDebugPrinter printer,
+                 BufferedDebugPrinter eqPrinter,
                  String command,
                  boolean isEvalcmd)
     {
@@ -30,6 +32,7 @@ public class GnubgCommand implements Runnable {
         this.input = input;
         this.output = output;
         this.printer = printer;
+        this.eqPrinter = eqPrinter;
         this.command = command;
         this.isEvalcmd = isEvalcmd;
     }
@@ -91,6 +94,7 @@ public class GnubgCommand implements Runnable {
                 server.systemPrinter.printDebugln("Exception reading from gnubg external: " + e.getMessage());
             }
 
+            // this used to be a bug catcher... still need it?
             if(i == 0) {
                 printer.printDebugln(" ** !! ** trying next line for "
                         + (isEvalcmd ? "EVAL" : "BOARD") + " -   cmd: " + command);
@@ -106,7 +110,18 @@ public class GnubgCommand implements Runnable {
         }
 
         if(isEvalcmd) {
-            printer.printDebugln("gnubg EQUITIES (in " + replydiff + unit + "): " + rawReply);
+            printer.printDebugln("reply (in " + replydiff + unit + "): ");
+            String [] eqLabel = {"W ", "W(g) ", "W(bg) ", "L(g) ", "L(bg) ", "Cubeless "};
+            String eqStr = "";
+            int c = 0; String value;
+            for (String equity : rawReply.split(" ")) {
+                value = UnixConsole.BLACK + UnixConsole.BACKGROUND_YELLOW +
+                        String.format("%.2f%%", Double.parseDouble(equity) * 100) +
+                        UnixConsole.RESET + " ";
+                eqStr = eqStr.concat(eqLabel[c++]).concat(value);
+            }
+            eqPrinter.printDebug(eqStr);
+
             parseEquities(rawReply);
 
         } else {

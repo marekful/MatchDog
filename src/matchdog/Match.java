@@ -132,7 +132,7 @@ public class Match {
 		if(isMyTurn()) {
 			diff = now.getTime() - getMystamp().getTime() - fibsDiff * 1000;
 			server.printDebug("(my diff is " + diff + "(" + fibsDiff * 1000 + ") ms)");
-			if(diff > 20000) {
+			if(diff > 40000) {
 				if(isOwnResignInProgress()) {
 					server.fibsout.println("k I resigned, check your client!" +
 							" Accept or reject it.");

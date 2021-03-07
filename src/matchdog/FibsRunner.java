@@ -1036,12 +1036,12 @@ public class FibsRunner extends Thread {
 			//server.printDebug("in: " + in);
 			server.printDebug("initial roll");
 			String[] arr0 = in.split("You rolled");
-			server.printDebug("dbg: arr0[0]" + arr0[0]);
-			server.printDebug("dbg: arr0[1]" + arr0[1]);
+			//server.printDebug("dbg: arr0[0]" + arr0[0]);
+			//server.printDebug("dbg: arr0[1]" + arr0[1]);
 			String[] arr1 = arr0[1].toLowerCase().split(
 					", " + match.getPlayer1().toLowerCase() + " rolled ");
-			server.printDebug("dbg: arr1[0]" + arr1[0]);
-			server.printDebug("dbg: arr1[1]" + arr1[1]);
+			//server.printDebug("dbg: arr1[0]" + arr1[0]);
+			//server.printDebug("dbg: arr1[1]" + arr1[1]);
 
 			int d1 = Integer.parseInt(arr1[0].trim());
 			int d2 = Integer.parseInt(arr1[1].trim());
