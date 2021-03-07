@@ -96,7 +96,7 @@ public class MatchDogServer {
             while (true) {
                 try {
                     serverSocket = new ServerSocket(listenerPort);
-                    matchdog.systemPrinter.printDebugln(
+                    matchdog.systemPrinter.printLine(
                             ">>> Waiting for connection on port " + listenerPort,
 							"socketServer[" + listenerPort + "]:");
 					if(!listenLocal) {
@@ -106,7 +106,7 @@ public class MatchDogServer {
                 } catch (BindException e) {
                     listenerPort++;
                 } catch (Exception e) {
-                    matchdog.systemPrinter.printDebugln(
+                    matchdog.systemPrinter.printLine(
                             ">>> Exception creating socket: " + e.getMessage(),
                             "socketServer[" + listenerPort + "]:");
                     e.printStackTrace();
@@ -115,7 +115,7 @@ public class MatchDogServer {
             }
 
             if (serverSocket == null) {
-                matchdog.systemPrinter.printDebugln(
+                matchdog.systemPrinter.printLine(
                         ">>> Couldn't create socket, exiting listener",
                         "socketServer[" + listenerPort + "]:");
             }
@@ -135,7 +135,7 @@ public class MatchDogServer {
             public void run() {
                 try {
                     clientSocket = serverSocket.accept();
-                    matchdog.systemPrinter.printDebugln(
+                    matchdog.systemPrinter.printLine(
                             ">>> Connection from " + clientSocket.getRemoteSocketAddress(),
 							"socketServer[" + listenerPort + "]:"
                     );
@@ -148,7 +148,7 @@ public class MatchDogServer {
                             clientSocket.getInputStream(),
                             new PrintStream(clientSocket.getOutputStream())
                     );
-                    matchdog.systemPrinter.printDebugln(
+                    matchdog.systemPrinter.printLine(
                             ">>> Connection from " + clientSocket.getRemoteSocketAddress() + " closed",
                             "socketServer[" + listenerPort + "]:"
                     );

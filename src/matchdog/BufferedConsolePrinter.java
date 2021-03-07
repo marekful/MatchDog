@@ -5,7 +5,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class BufferedConsolePrinter extends ConsolePrinter {
+public class BufferedConsolePrinter extends ConsoleColorPrinter {
 
     private static final Object lock = new Object();
     private static final HashMap<PrintStream, ArrayList<String>> buff;
@@ -48,35 +48,35 @@ public class BufferedConsolePrinter extends ConsolePrinter {
 		}
 	}
 
-	public synchronized void printDebug(String msg, PrintStream os, String label) {
+	public synchronized void print(String msg, PrintStream os, String label) {
 		if(isSuspended(os)) {
 			if(!label.equals("")) {
-				label = getColor() + getBgColor()+ label + ConsolePrinter.RESET + " ";
+				label = getColor() + getBgColor()+ label + RESET + " ";
 			}
 			_buff(os, msg, label);
 		} else {
-			super.printDebug(msg, os, label);
+			super.print(msg, os, label);
 		}
 	}
 	
-	public synchronized void printDebugln(String msg, PrintStream os) {
+	public synchronized void printLine(String msg, PrintStream os) {
 		if(isSuspended(os)) {
 			_buff(os, msg, lineSeparator + getColor() + getBgColor()
-					+ getLabel() + ConsolePrinter.RESET);
+					+ getLabel() + RESET);
 		} else {
-			super.printDebugln(msg, os);
+			super.printLine(msg, os);
 		}
 	}
 	
 	
-	public synchronized void printDebugln(String msg, PrintStream os, String label) {
+	public synchronized void printLine(String msg, PrintStream os, String label) {
 		if(isSuspended(os)) {
 			if(!label.equals("")) {
-				label = lineSeparator + getColor() + getBgColor()+ label + ConsolePrinter.RESET;
+				label = lineSeparator + getColor() + getBgColor()+ label + RESET;
 			}
 			_buff(os, msg, label);
 		} else {
-			super.printDebugln(msg, os, label);
+			super.printLine(msg, os, label);
 		}
 	}
 	

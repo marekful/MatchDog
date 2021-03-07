@@ -97,7 +97,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 		
 		try {
 			if(prefs.getGnuBgPort() == 0) {
-				systemPrinter.printDebugln("NOT starting gnubg");
+				systemPrinter.printLine("NOT starting gnubg");
 				setFibsmode(3);
 			} else {
 
@@ -114,7 +114,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 			
 
 		} catch (Exception e) {
-			systemPrinter.printDebugln(this.getClass().toString() 
+			systemPrinter.printLine(this.getClass().toString()
 									+ "(runServer): " + e);
 			e.printStackTrace();
 		}
@@ -418,20 +418,20 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
         keepalivetimertask.cancel();
         fibs.terminate();
 
-        systemPrinter.printDebugln("Exiting MatchDog Server");
-        systemPrinter.printDebugln("bye");
-        systemPrinter.printDebugln("", "");
+        systemPrinter.printLine("Exiting MatchDog Server");
+        systemPrinter.printLine("bye");
+        systemPrinter.printLine("", "");
         System.exit(0);
     }
 
 	private void initFibs() {
 
-		systemPrinter.printDebugln("Initialising fibs");
+		systemPrinter.printLine("Initialising fibs");
 		fibs = new FibsRunner(this, programPrefs.getFibshost(), programPrefs.getFibsport(), fibsCount);
 		
 		fibs.start();				
 
-		systemPrinter.printDebugln("Connecting to fibs ");
+		systemPrinter.printLine("Connecting to fibs ");
 
         synchronized (lock) {
             try {
@@ -460,7 +460,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 
 
 	protected void initGnuBg() {
-        systemPrinter.printDebugln("Initialising gnubg...");
+        systemPrinter.printLine("Initialising gnubg...");
         gnubg = new BGRunner(programPrefs.getGnubgCmdArr(), this);
 
         if(!gnubg.launch()) {
@@ -476,7 +476,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 			return;
 		gnubg.terminate();
 		gnubg = null;
-        systemPrinter.printDebugln("Gnubg terminated");
+        systemPrinter.printLine("Gnubg terminated");
 	}
 	
 	protected void resendLastBoard() {
@@ -662,7 +662,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 		if(fibs != null) {
 			c = fibs.procGPcounter;
 		}
-		printer.printDebugln(str, "MatchDog[" + c + "]:");
+		printer.printLine(str, "MatchDog[" + c + "]:");
 	}
 	
 	public PlayerStats openPlayerStats(String path) {

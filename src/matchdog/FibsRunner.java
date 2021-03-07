@@ -189,7 +189,7 @@ public class FibsRunner extends Thread {
 			while ((inputLine = input.readLine()) != null) {
 				
 				if(!run || s.isInputShutdown() || s.isOutputShutdown()) {
-					server.systemPrinter.printDebugln("Stopping fibs: " + s.isInputShutdown() + " - " + s.isOutputShutdown());
+					server.systemPrinter.printLine("Stopping fibs: " + s.isInputShutdown() + " - " + s.isOutputShutdown());
 					break;
 				}
 				
@@ -223,21 +223,21 @@ public class FibsRunner extends Thread {
 				}
 			}
 
-            server.systemPrinter.printDebugln("Exiting FibsRunner thread - " + getName());
+            server.systemPrinter.printLine("Exiting FibsRunner thread - " + getName());
 			dead = true;
 			terminate();
 		}
 		catch (SocketException e) {
-			server.systemPrinter.printDebugln("Fibs connection closed - " + getName());
+			server.systemPrinter.printLine("Fibs connection closed - " + getName());
 		}
 		catch (Exception err) {
-			server.systemPrinter.printDebugln("FibsRunner(run): " + err +  " - " + getName());
+			server.systemPrinter.printLine("FibsRunner(run): " + err +  " - " + getName());
             for(PrintStream os : server.getPrintStreams()) {
                 err.printStackTrace(os);
             }
 		}
         if(!terminating) {
-            server.systemPrinter.printDebugln("FibsRunner(run): *** RESTARING FIBS ***" + getName());
+            server.systemPrinter.printLine("FibsRunner(run): *** RESTARING FIBS ***" + getName());
             sleepFibs(1000);
             restart();
         }
@@ -346,10 +346,10 @@ public class FibsRunner extends Thread {
 		// currently gameplay and tormonitor modes are filtered
 		if (server.getFibsmode() > FIBS_MODE_WATCH) {
 			if (filteredInput != null) {
-				linePrinter.printDebugln(filteredInput);
+				linePrinter.printLine(filteredInput);
 			}
 		} else {
-			linePrinter.printDebugln(in);
+			linePrinter.printLine(in);
 		}
 	
 		//// LOGIN
@@ -1069,7 +1069,7 @@ public class FibsRunner extends Thread {
 				// server.gnubgout.println("set dice " + d1 + " " + d2);
 
 			} catch (NumberFormatException e) {
-				server.systemPrinter.printDebugln("FibsRunner(processGamePlay): " + e);
+				server.systemPrinter.printLine("FibsRunner(processGamePlay): " + e);
 			}
 			//match.stat.newGame(d1, d2);
 
@@ -1568,7 +1568,7 @@ public class FibsRunner extends Thread {
 					match.setTurn(new int[] { 0, 1 });
 					match.setRound(match.getRound() + 1);
 
-                    server.printer.printDebugln(" *** OPP's turn ***", "");
+                    server.printer.printLine(" *** OPP's turn ***", "");
                     server.printDebug("");
                     server.fibs.printMatchInfo();
 				}
@@ -1624,7 +1624,7 @@ public class FibsRunner extends Thread {
 							&& !(match.wasResumed() && match.getRound() == 1)) {
 
 						wOppMoveBoard = true;
-						server.printer.printDebug("waiting for OPP move board", "");
+						server.printer.print("waiting for OPP move board", "");
 						
 
 					} else {
@@ -1632,7 +1632,7 @@ public class FibsRunner extends Thread {
                         match.setTurn(new int[] { 1, 0 });
                         match.setRound(match.getRound() + 1);
 
-                        server.printer.printDebugln(" *** My turn ***", "");
+                        server.printer.printLine(" *** My turn ***", "");
                         server.printDebug("");
                         server.fibs.printMatchInfo();
 
@@ -1675,7 +1675,7 @@ public class FibsRunner extends Thread {
 								+ " crawford: " + match.isCrawford() + "]");
 					}
 
-                    server.printer.printDebugln(" *** My turn ***", "");
+                    server.printer.printLine(" *** My turn ***", "");
                     server.printDebug("");
                     printMatchInfo();
 
@@ -1699,7 +1699,7 @@ public class FibsRunner extends Thread {
 						match.setCube(match.getCube() * 2);
 						doubledInRound = match.getRound();
 
-                        server.printer.printDebugln(" *** OPP's turn ***", "");
+                        server.printer.printLine(" *** OPP's turn ***", "");
                         server.printDebug("");
                         printMatchInfo();
 
@@ -1708,7 +1708,7 @@ public class FibsRunner extends Thread {
 				}
 				if (inputHasBoard && wOppDoubleBoard) {
 
-                    server.printer.printDebugln(" *** My turn ***", "");
+                    server.printer.printLine(" *** My turn ***", "");
                     server.printDebug("");
                     printMatchInfo();
 
@@ -1788,7 +1788,7 @@ public class FibsRunner extends Thread {
 			getOwnRating();
 			getOppRating();
 		} catch (NumberFormatException e) {
-			server.systemPrinter.printDebugln(this.getClass().toString() + "(startMatch): " + e);
+			server.systemPrinter.printLine(this.getClass().toString() + "(startMatch): " + e);
 		}
 	
 	}
@@ -2047,11 +2047,11 @@ public class FibsRunner extends Thread {
 				+ match.getTotalTime() / 1000 / 60 + ":"
 				+ (match.getTotalTime() / 1000 - match.getTotalTime() / 1000 / 60 * 60)
 				+ " ]" + UnixConsole.RESET;
-		matchinfoPrinter.printDebug(matchinfoStr);
+		matchinfoPrinter.print(matchinfoStr);
 	}
 
 	protected void printFibsCommand(String fibscommand) {
-		matchinfoPrinter.printDebug("", fibscommand);
+		matchinfoPrinter.print("", fibscommand);
 	}
 
 /*	private int getProcGPcounter() {
@@ -2064,7 +2064,7 @@ public class FibsRunner extends Thread {
 		}
 		terminating = true;
 		
-		server.systemPrinter.printDebugln("Terminating FibsRunner - " + getName());
+		server.systemPrinter.printLine("Terminating FibsRunner - " + getName());
 		if(match != null) {
 			server.printDebug("Terminating FibsRunner: dropping match");
 			match.setDropped(true);
@@ -2092,14 +2092,14 @@ public class FibsRunner extends Thread {
 			s.close();
 	
 		} catch(IOException e) {
-			server.systemPrinter.printDebugln("Exception closing socket to fibs: " + e.getMessage());
+			server.systemPrinter.printLine("Exception closing socket to fibs: " + e.getMessage());
 		} catch(InterruptedException e) {
-			server.systemPrinter.printDebugln("Exception sleeping fibs thread (in terminate()): " + e.getMessage());
+			server.systemPrinter.printLine("Exception sleeping fibs thread (in terminate()): " + e.getMessage());
 		} catch(Exception e) {
-			server.systemPrinter.printDebugln("Exception (in terminate()): " + e.getClass() + " > " + e.getMessage());
+			server.systemPrinter.printLine("Exception (in terminate()): " + e.getClass() + " > " + e.getMessage());
 			e.printStackTrace();
 		}
-		server.systemPrinter.printDebugln("Terminating FibsRunner - " + getName() + " s.closed: " + s.isClosed() );
+		server.systemPrinter.printLine("Terminating FibsRunner - " + getName() + " s.closed: " + s.isClosed() );
 		
 	}
 

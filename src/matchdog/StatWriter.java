@@ -299,7 +299,7 @@ public class StatWriter {
                             + server.playerstats.getSince(0) + "]");
                     logfile.close();
                 } catch (IOException e) {
-                    server.systemPrinter.printDebugln(e.getMessage());
+                    server.systemPrinter.printLine(e.getMessage());
                 }
             }
         }

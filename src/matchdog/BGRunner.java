@@ -55,17 +55,17 @@ public class BGRunner  {
 	public boolean launch() {
         for (String cmd : gnubgCommands) {
             try {
-                printer.printDebugln("Trying to launch gnubg binary");
+                printer.printLine("Trying to launch gnubg binary");
                 p = Runtime.getRuntime().exec(cmd);
-                printer.printDebugln("gnubg running (" + cmd + ")");
+                printer.printLine("gnubg running (" + cmd + ")");
                 break;
             } catch (Exception e) {
-                printer.printDebugln("gnubg not found at: " + cmd);
+                printer.printLine("gnubg not found at: " + cmd);
             }
         }
 
         if (p == null) {
-            printer.printDebugln("Couldn't launch gnubg, exiting...");
+            printer.printLine("Couldn't launch gnubg, exiting...");
             return false;
         }
 
@@ -143,7 +143,7 @@ public class BGRunner  {
     protected void processInput() {
         try {
             while((pIn.ready())) {
-                printer.printDebugln(pIn.readLine());
+                printer.printLine(pIn.readLine());
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -164,7 +164,7 @@ public class BGRunner  {
     private synchronized void execCommand(String lineIn) {
 
         if(lineIn.trim().equals("")) {
-            matchPrinter.printDebugln("*** !! *** NOT SENDING empty line");
+            matchPrinter.printLine("*** !! *** NOT SENDING empty line");
             return;
         }
 
@@ -181,7 +181,7 @@ public class BGRunner  {
                 (new Thread(r)).start();
             }
         } catch (RuntimeException e) {
-            server.systemPrinter.printDebugln("Restarting gnubg now");
+            server.systemPrinter.printLine("Restarting gnubg now");
             restartGnubg();
         }
     }
@@ -195,7 +195,7 @@ public class BGRunner  {
                 InetAddress sa = InetAddress.getByName("localhost");
                 s = new Socket(sa, server.prefs.getGnuBgPort());
                 if(s.isConnected()) {
-                    server.systemPrinter.printDebugln("Successfully connected to bg socket");
+                    server.systemPrinter.printLine("Successfully connected to bg socket");
                     connected = true;
                 }
                 sIn = new BufferedReader(new InputStreamReader(s.getInputStream()));
@@ -204,7 +204,7 @@ public class BGRunner  {
             } catch(InterruptedException e) {
                 return;
             } catch(Exception e) {
-                server.systemPrinter.printDebugln(
+                server.systemPrinter.printLine(
                         "Exception in BGRunner.connectSocket(): " + e.getMessage() + ", retrying..."
                 );
             }
@@ -219,7 +219,7 @@ public class BGRunner  {
             s.close();
             connected = false;
         } catch (IOException e) {
-            server.systemPrinter.printDebugln("Exception in BGRunner.closeSocket():" + e.getMessage());
+            server.systemPrinter.printLine("Exception in BGRunner.closeSocket():" + e.getMessage());
             e.printStackTrace();
         }
     }

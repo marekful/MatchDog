@@ -42,7 +42,7 @@ public class GnubgCommand implements Runnable {
         long sockettime = System.nanoTime();
         output.printf("%s", command + "\r\n");
         msg += "(" + ((System.nanoTime() - sockettime) / 1000000.0) + " ms) OK, waiting for reply";
-        printer.printDebugln(msg);
+        printer.printLine(msg);
     }
 
     @Override
@@ -91,25 +91,25 @@ public class GnubgCommand implements Runnable {
                 }
 
             } catch (IOException e) {
-                server.systemPrinter.printDebugln("Exception reading from gnubg external: " + e.getMessage());
+                server.systemPrinter.printLine("Exception reading from gnubg external: " + e.getMessage());
             }
 
             // this used to be a bug catcher... still need it?
             if(i == 0) {
-                printer.printDebugln(" ** !!00 ** << Restarting gnubg >> "
+                printer.printLine(" ** !!00 ** << Restarting gnubg >> "
                         + (isEvalcmd ? "EVAL" : "BOARD") + " -   cmd: " + command);
-                printer.printDebugln("  reply: " + rawReply);
+                printer.printLine("  reply: " + rawReply);
             } else {
-                printer.printDebugln(" ** !!11 ** << Restarting gnubg >> "
+                printer.printLine(" ** !!11 ** << Restarting gnubg >> "
                         + (isEvalcmd ? "EVAL" : "BOARD") + " -   cmd: " + command);
-                printer.printDebugln("  reply: " + rawReply);
+                printer.printLine("  reply: " + rawReply);
 
                 throw new RuntimeException("Unexpected response from gnubg");
             }
         }
 
         if(isEvalcmd) {
-            printer.printDebugln("reply (in " + replydiff + unit + "): ");
+            printer.printLine("reply (in " + replydiff + unit + "): ");
             String [] eqLabel = {"W ", "W(g) ", "W(bg) ", "L(g) ", "L(bg) ", "Cubeless "};
             String eqStr = "";
             int c = 0; String value;
@@ -119,14 +119,14 @@ public class GnubgCommand implements Runnable {
                         UnixConsole.RESET + " ";
                 eqStr = eqStr.concat(eqLabel[c++]).concat(value);
             }
-            eqPrinter.printDebug(eqStr);
+            eqPrinter.print(eqStr);
 
             parseEquities(rawReply);
 
         } else {
 
             if(server.fibs.match == null || server.fibs.match.isFinished()) {
-                printer.printDebugln("*!* NOT SENDING to FIBS -> match finished");
+                printer.printLine("*!* NOT SENDING to FIBS -> match finished");
                 return;
             }
 
@@ -134,7 +134,7 @@ public class GnubgCommand implements Runnable {
                 return;
             }
 
-            printer.printDebugln("gnubg says (in " + replydiff + unit + "): " + rawReply);
+            printer.printLine("gnubg says (in " + replydiff + unit + "): " + rawReply);
 
             fibsCommand = processReply(rawReply);
 
@@ -181,12 +181,12 @@ public class GnubgCommand implements Runnable {
         // and a board: which results in a 'roll' or other
         // non expected reply is sent from gnubg.
         if(in.startsWith("roll") || in.startsWith("double") || in.contains("/") || in.equals("")) {
-            printer.printDebugln("*** !! BUG parseEquities: " + in);
+            printer.printLine("*** !! BUG parseEquities: " + in);
             return;
         }
 
         if(server.fibs.match == null) {
-            printer.printDebugln("*!* NOT PARSING EQUITIES -> match == null");
+            printer.printLine("*!* NOT PARSING EQUITIES -> match == null");
             return;
         }
 
