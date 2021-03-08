@@ -1,13 +1,15 @@
-package matchdog;
+package matchdog.console.printer;
 
-import java.io.PrintStream;
+import matchdog.PrintableStreamSource;
 
 public class ConsoleColorPrinter extends ConsolePrinter {
     public static final String DEFAULT_COLOR = "";
     public static final String DEFAULT_BGCOLOR = "";
     public static final String RESET = "\u001B[0m";
 
-    public ConsoleColorPrinter(PrintableStreamSource source, String label, String color, String bgColor) {
+    private final String color, bgColor;
+
+    ConsoleColorPrinter(PrintableStreamSource source, String label, String color, String bgColor) {
         super(source, label);
         this.color = color;
         this.bgColor = bgColor;
@@ -27,12 +29,7 @@ public class ConsoleColorPrinter extends ConsolePrinter {
         return DEFAULT_BGCOLOR;
     }
 
-    public synchronized void print(String msg, PrintStream os, String label) {
-		if (!label.equals("")) {
-			label = getColor() + getBgColor() + label + RESET + " ";
-		}
-        os.print(label + msg);
-        os.flush();
+    public String getPrompt() {
+        return (getLabel() != null ? getColor() + getBgColor() + getLabel() + RESET + " " : "");
     }
-
 }

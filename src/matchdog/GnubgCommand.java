@@ -1,6 +1,7 @@
 package matchdog;
 
 import jcons.src.com.meyling.console.UnixConsole;
+import matchdog.console.printer.BufferedConsolePrinter;
 
 import java.io.BufferedReader;
 import java.io.IOException;

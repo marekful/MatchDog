@@ -1,5 +1,7 @@
 
-package matchdog;
+package matchdog.console.printer;
+
+import matchdog.PrintableStreamSource;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -14,7 +16,7 @@ public class BufferedConsolePrinter extends ConsoleColorPrinter {
         buff = new HashMap<PrintStream, ArrayList<String>>();
     }
 
-    static synchronized void removeOutputBuffer(PrintStream os) {
+    public static synchronized void removeOutputBuffer(PrintStream os) {
         if(buff.get(os) == null) return;
         buff.remove(os);
     }
@@ -23,7 +25,7 @@ public class BufferedConsolePrinter extends ConsoleColorPrinter {
     private final HashMap<PrintStream, Boolean> suspended;
     private final String lineSeparator;
 
-    public BufferedConsolePrinter(PrintableStreamSource source, String label, String color, String bgColor) {
+    BufferedConsolePrinter(PrintableStreamSource source, String label, String color, String bgColor) {
 		super(source, label, color, bgColor);
 		this.source = source;
 		suspended = new HashMap<PrintStream, Boolean>();
@@ -48,7 +50,7 @@ public class BufferedConsolePrinter extends ConsoleColorPrinter {
 		}
 	}
 
-	public synchronized void print(String msg, PrintStream os, String label) {
+	public synchronized ConsolePrinter print(String msg, PrintStream os, String label) {
 		if(isSuspended(os)) {
 			if(!label.equals("")) {
 				label = getColor() + getBgColor()+ label + RESET + " ";
@@ -57,19 +59,21 @@ public class BufferedConsolePrinter extends ConsoleColorPrinter {
 		} else {
 			super.print(msg, os, label);
 		}
+		return this;
 	}
 	
-	public synchronized void printLine(String msg, PrintStream os) {
+	public synchronized ConsolePrinter printLine(String msg, PrintStream os) {
 		if(isSuspended(os)) {
 			_buff(os, msg, lineSeparator + getColor() + getBgColor()
 					+ getLabel() + RESET);
 		} else {
 			super.printLine(msg, os);
 		}
+		return this;
 	}
 	
 	
-	public synchronized void printLine(String msg, PrintStream os, String label) {
+	public synchronized ConsolePrinter printLine(String msg, PrintStream os, String label) {
 		if(isSuspended(os)) {
 			if(!label.equals("")) {
 				label = lineSeparator + getColor() + getBgColor()+ label + RESET;
@@ -78,6 +82,7 @@ public class BufferedConsolePrinter extends ConsoleColorPrinter {
 		} else {
 			super.printLine(msg, os, label);
 		}
+		return this;
 	}
 	
 	public boolean isSuspended(PrintStream os) {

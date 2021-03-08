@@ -2,6 +2,9 @@ package matchdog;
 
 import etc.TorExitNodeChecker;
 import jcons.src.com.meyling.console.UnixConsole;
+import matchdog.console.printer.BufferedConsolePrinter;
+import matchdog.console.printer.DefaultPrinter;
+import matchdog.console.printer.FibsPrinter;
 import matchdog.fibsboard.FibsBoard;
 
 import java.io.*;
@@ -49,7 +52,7 @@ public class FibsRunner extends Thread {
 	String host;
 	int port;
 	MatchDog server;
-	BufferedFibsConsolePrinter linePrinter;
+	FibsPrinter linePrinter;
 	BufferedConsolePrinter matchinfoPrinter;
 	Match match, lastmatch;
 	String lastboard, filteredInput;
@@ -144,11 +147,11 @@ public class FibsRunner extends Thread {
 		//final String pid = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
 		setName("FibsRunner-" + this.id);
 
-        linePrinter = new BufferedFibsConsolePrinter(
+        linePrinter = new FibsPrinter(
             server, "fibs:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_GREEN
         );
 
-        matchinfoPrinter = new BufferedConsolePrinter(
+        matchinfoPrinter = new DefaultPrinter(
 			server, "MatchInfo:", UnixConsole.BLACK, UnixConsole.BACKGROUND_YELLOW
 		);
 	}
@@ -2051,12 +2054,11 @@ public class FibsRunner extends Thread {
 	}
 
 	protected void printFibsCommand(String fibscommand) {
-		matchinfoPrinter.print("", fibscommand);
+		String oldLabel = matchinfoPrinter.getLabel();
+		matchinfoPrinter.setLabel(fibscommand);
+		matchinfoPrinter.print("");
+		matchinfoPrinter.setLabel(oldLabel);
 	}
-
-/*	private int getProcGPcounter() {
-		return procGPcounter;
-	}*/
 
 	protected void terminate() {
 		if(terminating) {

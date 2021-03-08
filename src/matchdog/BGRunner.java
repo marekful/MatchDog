@@ -1,5 +1,7 @@
 package matchdog;
 import jcons.src.com.meyling.console.UnixConsole;
+import matchdog.console.printer.BufferedConsolePrinter;
+import matchdog.console.printer.DefaultPrinter;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -35,7 +37,7 @@ public class BGRunner  {
 		p = null;
 		this.gnubgCommands = command;
 		this.server = server;
-		printer = new BufferedConsolePrinter(
+		printer = new DefaultPrinter(
 			server, "gnubg:", UnixConsole.LIGHT_YELLOW, UnixConsole.BACKGROUND_BLUE
 		);
 
@@ -43,10 +45,10 @@ public class BGRunner  {
         connected = false;
         evalCmd = false;
 
-        matchPrinter = new BufferedConsolePrinter(
+        matchPrinter = new DefaultPrinter(
             server, "gnubg:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_BLUE
         );
-        eqPrinter = new BufferedConsolePrinter(
+        eqPrinter = new DefaultPrinter(
             server, "Equities:", UnixConsole.LIGHT_YELLOW, UnixConsole.BACKGROUND_BLACK
         );
 	}
@@ -57,10 +59,13 @@ public class BGRunner  {
             try {
                 printer.printLine("Trying to launch gnubg binary");
                 p = Runtime.getRuntime().exec(cmd);
-                printer.printLine("gnubg running (" + cmd + ")");
+                long pid = p.pid();
+
+                printer.setLabel("gnubg[pid=" + pid + "]:")
+                       .printLine("gnubg running (" + cmd + ")");
                 break;
             } catch (Exception e) {
-                printer.printLine("gnubg not found at: " + cmd);
+                printer.printLine("gnubg not fouAnd at: " + cmd);
             }
         }
 
@@ -196,6 +201,7 @@ public class BGRunner  {
                 s = new Socket(sa, server.prefs.getGnuBgPort());
                 if(s.isConnected()) {
                     server.systemPrinter.printLine("Successfully connected to bg socket");
+                    matchPrinter.setLabel("gnubg[port=" + s.getPort() + "]");
                     connected = true;
                 }
                 sIn = new BufferedReader(new InputStreamReader(s.getInputStream()));

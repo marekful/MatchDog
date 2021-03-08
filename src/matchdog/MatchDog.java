@@ -2,6 +2,8 @@ package matchdog;
 
 import etc.TorExitNodeChecker;
 import jcons.src.com.meyling.console.UnixConsole;
+import matchdog.console.printer.BufferedConsolePrinter;
+import matchdog.console.printer.DefaultPrinter;
 
 import java.io.*;
 import java.util.*;
@@ -10,6 +12,8 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 	
 	protected static final String PROMPT = "$ ";
     static final Object lock = new Object();
+
+    long pid, gnubgPid;
 
 	BGRunner gnubg;
 	FibsRunner fibs;
@@ -45,7 +49,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 
     boolean contd, welcome;
 	
-	BufferedConsolePrinter printer, systemPrinter;
+	DefaultPrinter printer, systemPrinter, socketServerPrinter;
 	
 	MatchDog(ProgramPrefs progPrefs, PlayerPrefs prefs, HashMap<Integer, String> bl, String hostName, boolean listenLocal) {
 
@@ -79,22 +83,35 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 		// global blacklist
 		this.bl = bl;
 		
-		printer = new BufferedConsolePrinter(
+		printer = new DefaultPrinter(
 			this, "MatchDog:", UnixConsole.BLACK, UnixConsole.BACKGROUND_WHITE
 		);
-		systemPrinter = new BufferedConsolePrinter(
-			this, "system:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_RED
-		);
+        systemPrinter = new DefaultPrinter(
+                this, "system:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_RED
+        );
+        socketServerPrinter = new DefaultPrinter(
+                this, "socketServer[port=" + prefs.getListenerport() + "]:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_RED
+        );
+
+        if(listenLocal) {
+            listeners.put(0, System.out);
+        }
+
+        long pid = Long.parseLong(java.lang.management.ManagementFactory.getRuntimeMXBean().getName().split("@")[0]);
+        systemPrinter.printLine("Started MatchDog server PID: " + pid)
+                .setLabel("system[pid=" + pid + "]:");
 	}
-	
-	public void run() {
+
+    public long getGnubgPid() {
+        return gnubgPid;
+    }
+
+    public void run() {
 	
 		pstatspath = prefs.username + ".pstats";
 		
-		if(listenLocal) {
-			listeners.put(0, System.out);
-		}
-		
+
+
 		try {
 			if(prefs.getGnuBgPort() == 0) {
 				systemPrinter.printLine("NOT starting gnubg");
@@ -634,6 +651,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
     protected void suspendOutput(PrintStream output) {
         fibs.linePrinter.setSuspended(output, true);
         systemPrinter.setSuspended(output, true);
+        socketServerPrinter.setSuspended(output, true);
         printer.setSuspended(output, true);
         gnubg.matchPrinter.setSuspended(output, true);
         gnubg.eqPrinter.setSuspended(output, true);
@@ -643,6 +661,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
     protected void unSuspendOutput(PrintStream output) {
         fibs.linePrinter.setSuspended(output, false);
         systemPrinter.setSuspended(output, false);
+        socketServerPrinter.setSuspended(output, false);
         printer.setSuspended(output, false);
         gnubg.matchPrinter.setSuspended(output, false);
         gnubg.eqPrinter.setSuspended(output, false);
@@ -662,7 +681,8 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 		if(fibs != null) {
 			c = fibs.procGPcounter;
 		}
-		printer.printLine(str, "MatchDog[" + c + "]:");
+		printer.setLabel("MatchDog[" + c + "]:");
+		printer.printLine(str);
 	}
 	
 	public PlayerStats openPlayerStats(String path) {
