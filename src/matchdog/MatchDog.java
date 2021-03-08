@@ -4,6 +4,8 @@ import etc.TorExitNodeChecker;
 import jcons.src.com.meyling.console.UnixConsole;
 import matchdog.console.printer.BufferedConsolePrinter;
 import matchdog.console.printer.DefaultPrinter;
+import matchdog.console.printer.MatchDogPrinter;
+import sun.misc.Signal;
 
 import java.io.*;
 import java.util.*;
@@ -13,7 +15,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 	protected static final String PROMPT = "$ ";
     static final Object lock = new Object();
 
-    long pid, gnubgPid;
+    long pid;
 
 	BGRunner gnubg;
 	FibsRunner fibs;
@@ -41,15 +43,18 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 	HashMap<Integer, String> bl = new HashMap<Integer, String>();
 	HashMap<String, String> statrequests = new HashMap<String, String>();
 	
-	Timer keepalivetimer;
-	TimerTask keepalivetimertask;
-	HashMap<Integer, PrintStream> listeners = new HashMap<Integer, PrintStream>();
+	Timer keepaliveTimer;
+	TimerTask keepaliveTimerTask;
+	HashMap<Integer, PrintStream> listeners ;
+	HashMap<PrintStream, Boolean> inMatchDogShell;
 	
-	protected int fibsmode;
+	protected int fibsMode;
 
     boolean contd, welcome;
 	
-	DefaultPrinter printer, systemPrinter, socketServerPrinter;
+	MatchDogPrinter printer;
+    DefaultPrinter systemPrinter;
+    DefaultPrinter socketServerPrinter;
 	
 	MatchDog(ProgramPrefs progPrefs, PlayerPrefs prefs, HashMap<Integer, String> bl, String hostName, boolean listenLocal) {
 
@@ -70,7 +75,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 		lastopp = null;
 		lastfinish = null;
 
-		fibsmode = 0;
+		fibsMode = 0;
 		fibsCount = 0;
 		matchCount = 0;
 		
@@ -79,43 +84,40 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 		ownRating = 0;
 		outputName = "";
 		serverStartedAt = new Date();
-		
-		// global blacklist
+
+        listeners = new HashMap<Integer, PrintStream>();
+        inMatchDogShell = new HashMap<PrintStream, Boolean>();
+
+        // global blacklist
 		this.bl = bl;
 		
-		printer = new DefaultPrinter(
+		printer = new MatchDogPrinter(
 			this, "MatchDog:", UnixConsole.BLACK, UnixConsole.BACKGROUND_WHITE
 		);
         systemPrinter = new DefaultPrinter(
-                this, "system:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_RED
+            this, "system:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_RED
         );
         socketServerPrinter = new DefaultPrinter(
-                this, "socketServer[port=" + prefs.getListenerport() + "]:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_RED
+            this, "socketServer[port=" + prefs.getListenerport() + "]:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_RED
         );
 
         if(listenLocal) {
             listeners.put(0, System.out);
         }
 
-        long pid = Long.parseLong(java.lang.management.ManagementFactory.getRuntimeMXBean().getName().split("@")[0]);
+        pid = Long.parseLong(java.lang.management.ManagementFactory.getRuntimeMXBean().getName().split("@")[0]);
         systemPrinter.printLine("Started MatchDog server PID: " + pid)
                 .setLabel("system[pid=" + pid + "]:");
 	}
 
-    public long getGnubgPid() {
-        return gnubgPid;
-    }
-
     public void run() {
 	
 		pstatspath = prefs.username + ".pstats";
-		
-
 
 		try {
 			if(prefs.getGnuBgPort() == 0) {
 				systemPrinter.printLine("NOT starting gnubg");
-				setFibsmode(3);
+				setFibsMode(3);
 			} else {
 
 				initGnuBg();
@@ -128,7 +130,6 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 				keepAliveFibs();
 
 			}
-			
 
 		} catch (Exception e) {
 			systemPrinter.printLine(this.getClass().toString()
@@ -148,7 +149,26 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
     private void leaveShell(PrintStream os) {
         contd = false;
         welcome = true;
+        inMatchDogShell.remove(os);
         os.print(new char[]{27, 91, 65});
+    }
+
+    private boolean inMatchDogShell(PrintStream p) {
+	    if (!inMatchDogShell.containsKey(p)) {
+	        return false;
+        }
+	    return inMatchDogShell.get(p);
+    }
+
+    public String getPlayerName() {
+	    return prefs.getUsername();
+    }
+
+    public int getGPC() {
+	    if (fibs == null) {
+	        return -1;
+        }
+	    return fibs.procGPcounter;
     }
 	
 	public void listen(InputStream in, PrintStream out) {
@@ -158,29 +178,43 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
         welcome = true;
 		int listenerId = listeners.size();
 
-		BufferedReader input = new BufferedReader(new InputStreamReader(in));
-		PrintStream output = out;
+        Signal.handle(new Signal("INT"), signal -> {
+            if (systemPrinter.isSuspended(out)) {
+                unSuspendOutput(out);
+            }
+            if (inMatchDogShell(out)) {
+                leaveShell(out);
+            } else {
+                systemPrinter.printLine("Got signal " + signal);
+                stopServer();
+            }
+        });
 
-		if(!out.equals(System.out)) {
-			listeners.put(listenerId, output);
+		BufferedReader input = new BufferedReader(new InputStreamReader(in));
+
+        if(!out.equals(System.out)) {
+			listeners.put(listenerId, out);
 		}
 
         try {
             String line = "";
             for (; ; ) {
-
                 if (contd) {
+                    inMatchDogShell.put(out, true);
                     if (welcome) {
-                        printWelcome(output);
-                        output.print(getPrompt());
+                        printWelcome(out);
+                        out.print(getPrompt());
                         welcome = false;
                     } else {
-                        output.print(getPrompt());
+                        out.print(getPrompt());
                     }
-                    suspendOutput(output);
+                    suspendOutput(out);
                 } else {
-                    unSuspendOutput(output);
+                    inMatchDogShell.replace(out, false);
+                    unSuspendOutput(out);
                 }
+
+
 
                 try {
                     line = input.readLine();
@@ -213,12 +247,12 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 
                 if (line.length() == 1) {
                     int code = (int) line.charAt(0);
-                    output.print(code);
+                    out.print(code);
                     switch (code) {
                         // exit shell
                         case 27:
                             //output.print("Leaving MatchDog Shell");
-                            leaveShell(output);
+                            leaveShell(out);
                             continue;
                     }
                 }
@@ -226,7 +260,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                 contd = true;
 
                 if (line.equals("exit")) {
-                    unSuspendOutput(output);
+                    unSuspendOutput(out);
                     break;
                 }
                 if (line.equals("close") && !in.equals(System.in)) {
@@ -256,8 +290,8 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                     continue;
                 } else if (line.split(" ")[0].equals("200")) {
                     String host = line.split(" ")[1];
-                    printDebug("TOR CHECHK [" + host + "] result: "
-                            + TorExitNodeChecker.isTorExitNode(host));
+                    printer.printLine("TOR CHECHK [" + host + "] result: "
+                            + TorExitNodeChecker.isTorExitNode(host));;
                     continue;
                 } else if (line.equals("166")) {
                     removePlayerStat("marekful");
@@ -265,61 +299,61 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                 } else if (line.split(" ")[0].equals("16")) {
                     if (!line.split(" ")[1].trim().equals(""))
                         statview.dumpPlayerStats(line.split(" ")[1], 0);
-                    leaveShell(output);
+                    leaveShell(out);
                     continue;
                 } else if (line.split(" ")[0].equals("17")) {
                     if (!line.split(" ")[1].trim().equals(""))
                         statview.dumpPlayerStats(line.split(" ")[1], 1);
-                    leaveShell(output);
+                    leaveShell(out);
 
                     continue;
                 } else if (line.split(" ")[0].equals("18")) {
                     if (!line.split(" ")[1].trim().equals(""))
                         statview.dumpPlayerStats(line.split(" ")[1], 3);
-                    leaveShell(output);
+                    leaveShell(out);
                     continue;
                 } else if (line.equals("111")) {
-                    output.print(Arrays.stream(prefs.showPrefs()).sequential());
-                    output.println();
-                    leaveShell(output);
+                    out.print(Arrays.stream(prefs.showPrefs()).sequential());
+                    out.println();
+                    leaveShell(out);
                     continue;
                 } else if (line.equals("88")) {
                     resendLastBoard();
-                    leaveShell(output);
+                    leaveShell(out);
                     continue;
                 } else if (line.equals("31")) {
                     prefs.setAutoinvite((prefs.isAutoinvite()) ? false : true);
-                    output.print("autoinvite is now: " + prefs.isAutoinvite());
-                    output.println();
-                    leaveShell(output);
+                    out.print("autoinvite is now: " + prefs.isAutoinvite());
+                    out.println();
+                    leaveShell(out);
                     continue;
                 } else if (line.equals("32")) {
                     prefs.setAutojoin((prefs.isAutojoin()) ? false : true);
-                    output.print("autojoin is now: " + prefs.isAutojoin());
-                    output.println();
-                    leaveShell(output);
+                    out.print("autojoin is now: " + prefs.isAutojoin());
+                    out.println();
+                    leaveShell(out);
                     continue;
                 } else if (line.equals("9")) {
 
                     if (fibs.match != null) {
                         if (fibs.match.isCrawford()) {
                             fibs.match.setCrawford(false);
-                            output.print("crawford is now: " + fibs.match.isCrawford());
-                            output.println();
+                            out.print("crawford is now: " + fibs.match.isCrawford());
+                            out.println();
                         } else {
                             fibs.match.setCrawford(true);
-                            output.print("crawford is now: " + fibs.match.isCrawford());
-                            output.println();
+                            out.print("crawford is now: " + fibs.match.isCrawford());
+                            out.println();
                         }
                     }
                     continue;
                 } else if (line.equals("5")) {
                     fibsout.println("whois " + prefs.getUsername());
-                    leaveShell(output);
+                    leaveShell(out);
                     continue;
                 } else if (line.equals("7")) {
                     fibs.getSavedMatches();
-                    leaveShell(output);
+                    leaveShell(out);
                     continue;
                 } else if (line.equals("29")) {
                     fibs.procGPcounter = 0;
@@ -334,33 +368,38 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                     continue;
                 } else if (line.equals("4")) {
                     fibs.login();
-                    leaveShell(output);
+                    leaveShell(out);
+                    continue;
+                } else if (line.equals("44")) {
+                    gnubg.closeSocket();
+                    Runtime.getRuntime().exec("kill -SIGINT " + gnubg.getPid());
+                    leaveShell(out);
                     continue;
                 } else if (line.equals("refibs")) {
-                    leaveShell(output);
-                    unSuspendOutput(output);
+                    leaveShell(out);
+                    unSuspendOutput(out);
                     restartFibs();
                     continue;
                 } else if (line.equals("rebg")) {
-                    leaveShell(output);
-                    unSuspendOutput(output);
+                    leaveShell(out);
+                    unSuspendOutput(out);
                     gnubg.restartGnubg();
                     continue;
                 } else if (line.equals("uptime")) {
-                    output.print(TimeAgo.fromMs(System.currentTimeMillis() - serverStartedAt.getTime()));
-                    output.println();
+                    out.print(TimeAgo.fromMs(System.currentTimeMillis() - serverStartedAt.getTime()));
+                    out.println();
                     continue;
                 } else if (line.equals("stat")) {
-                    output.print("uptime: "
+                    out.print("uptime: "
                             + TimeAgo.fromMs(System.currentTimeMillis() - serverStartedAt.getTime())
                             + " | match# "
                             + matchCount + " fibs# " + fibsCount
                             + " pGP# " + fibs.procGPcounter);
-                    output.println();
+                    out.println();
                     continue;
                 } else if (line.equals("log")) {
-                    output.println(statview.dumpMatchlog());
-                    leaveShell(output);
+                    out.println(statview.dumpMatchlog());
+                    leaveShell(out);
                     continue;
                 } else if (line.startsWith("log ")) {
                     String[] split = line.split(" ");
@@ -369,25 +408,25 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                         try {
                             len = Integer.parseInt(split[1]);
                         } catch (NumberFormatException e) {}
-                        output.println(statview.dumpMatchlog(len));
-                        leaveShell(output);
+                        out.println(statview.dumpMatchlog(len));
+                        leaveShell(out);
                     }
                     continue;
                 } else if (line.equals("19")) {
-                    output.print(prefs.getPreferredOpps().toString());
-                    output.println();
+                    out.print(prefs.getPreferredOpps().toString());
+                    out.println();
                     continue;
                 } else {
-                    output.print(getPrompt() + "Unknown command: '" + line + "' (" + line.length() + ") --> ");
+                    out.print(getPrompt() + "Unknown command: '" + line + "' (" + line.length() + ") --> ");
                     for(int c = 0; c < line.length(); c++) {
-                        output.print((int)line.charAt(c) + " ");
+                        out.print((int)line.charAt(c) + " ");
                     }
-                    output.println();
+                    out.println();
                     continue;
                 }
 
-                output.print(outputName + "$ ");
-                output.flush();
+                out.print(outputName + "$ ");
+                out.flush();
                 contd = false;
                 welcome = true;
 
@@ -397,7 +436,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                     exit = false;
                     break;
                 }
-                output.print("Leaving MatchDog Shell");
+                out.print("Leaving MatchDog Shell");
 
                 try {
                     writer.println(line);
@@ -425,14 +464,14 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 		}
 		if(!out.equals(System.out)) {
 			listeners.remove(listenerId);
-            BufferedConsolePrinter.removeOutputBuffer(output);
+            BufferedConsolePrinter.removeOutputBuffer(out);
 		}
 	}
 
     protected void stopServer() {
         stopInviter();
         stopGnubg();
-        keepalivetimertask.cancel();
+        keepaliveTimerTask.cancel();
         fibs.terminate();
 
         systemPrinter.printLine("Exiting MatchDog Server");
@@ -498,21 +537,21 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 	
 	protected void resendLastBoard() {
 		fibsout.println("b");
-		printDebug("Resending last board: " + fibs.lastboard);
+		printer.printLine("Resending last board: " + fibs.lastboard);;
 		fibs.sleepFibs(600);
 		gnubg.execBoard(fibs.lastboard.trim());
 	}
 
 	protected void initPlayerStats() {
-		printDebug("OPENING PlayerStats file...");
+		printer.printLine("OPENING PlayerStats file...");;
 
 		if ((playerstats = openPlayerStats(pstatspath)) != null) {
-			printDebug("OK (" + pstatspath + ")");
+			printer.printLine("OK (" + pstatspath + ")");;
             mergePlayerStats();
 		} else {
-			printDebug("FAILED, CREATING EMPTY PlayerStats ("
+			printer.printLine("FAILED, CREATING EMPTY PlayerStats ("
 					+ "will be written when first match stops --> " + pstatspath
-					+ ")");
+					+ ")");;
 			playerstats = new PlayerStats();
 		}
 	}
@@ -525,59 +564,59 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
             return;
         }
 
-        printDebug("IMPORTING from .pstat.import file (" + importPath + ")");
+        printer.printLine("IMPORTING from .pstat.import file (" + importPath + ")");;
 
         int mc = 0;
         for(String player : importPs.pstats.keySet()) {
             PlayerStats.PlayerStat ps = importPs.pstats.get(player);
-            printDebug(" ** Player: " + player + " history size: " + ps.history.size());
+            printer.printLine(" ** Player: " + player + " history size: " + ps.history.size());;
 
             if(ps.history.size() == 0) continue;
 
             if(playerstats.hasPlayer(player)) {
-                printDebug(" ** Appending to existing player");
+                printer.printLine(" ** Appending to existing player");;
             } else {
-                printDebug(" ** Player doesn't exist, creating");
+                printer.printLine(" ** Player doesn't exist, creating");;
                 playerstats.cratePlayer(player);
             }
-            printDebug(" ** Found "
+            printer.printLine(" ** Found "
                     + ps.history.size() + " match(es) to import in addition to "
                     + playerstats.getByName(player).history.size()
-                    + " existing match(es)");
+                    + " existing match(es)");;
 
             //playerstats.getByName(player).history.putAll(ps.history);
-            printDebug("");
+            printer.printLine("");
 
             MatchLog toImport, existing;
             for(Date d : ps.getHistory().keySet()) {
                 toImport = ps.getHistory().get(d);
                 existing = playerstats.getByName(player).getHistory().get(d);
 
-                printDebug(" ** Checking match " + d);
-                //printDebug(" **   import - ml: " + toImport.length + " score: " + toImport.finalscore
+                printer.printLine(" ** Checking match " + d);
+                //printer.printLine(" **   import - ml: " + toImport.length + " score: " + toImport.finalscore
                 //        + " game count: " + toImport.gamecount + " time: " + toImport.getTotalTimeStr(0));
 
                 if(existing != null) {
-                    //printDebug(" **   existing - ml: " + existing.length + " score: " + existing.finalscore
+                    //printer.printLine(" **   existing - ml: " + existing.length + " score: " + existing.finalscore
                     //        + " game count: " + existing.gamecount + " time: " + existing.getTotalTimeStr(0));
                 } else {
-                    printDebug(" ** IMPORTING MATCH ** ** ** ");
+                    printer.printLine(" ** IMPORTING MATCH ** ** ** ");
                     playerstats.getByName(player).putMatch(d, toImport);
                     mc++;
                 }
             }
 
-            printDebug("");
+            printer.printLine("");
         }
 
         if(mc > 0) {
-            printDebug(" ** Imported " + mc + " match(es), WRITING PSTATS FILE...");
+            printer.printLine(" ** Imported " + mc + " match(es), WRITING PSTATS FILE...");
             writePlayerStats(getPstatspath());
         }
     }
 	
 	protected void startInviter(String name, int ml) {
-		if(fibs.match != null || fibsmode == 2) 
+		if(fibs.match != null || fibsMode == 2)
 			return;
 		if(inviter == null) {
 			inviter = new Inviter(this, name, ml);
@@ -589,19 +628,19 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 			inviter.setWait(false);
 			inviter.t.cancel();
 			
-			printDebug("Inviter terminated");	
+			printer.printLine("Inviter terminated");
 			inviter = null;
 		}		
 	}
 	
 	private void keepAliveFibs() {
 		
-		if(keepalivetimertask != null) {
-			keepalivetimer.cancel();
+		if(keepaliveTimerTask != null) {
+			keepaliveTimer.cancel();
 		}
 		
-		keepalivetimer = new Timer();
-		keepalivetimertask = new TimerTask() {
+		keepaliveTimer = new Timer();
+		keepaliveTimerTask = new TimerTask() {
 			
 			Date firstRun = null;
 			
@@ -618,7 +657,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 					}
 
                     if(fibs.getFibsLastLineSecondsAgo() > FibsRunner.timoutSeconds / 3 * 2) {
-                        printDebug("KeepAlive(" + keepalivetimer.hashCode() + ") "
+                        printer.printLine("KeepAlive(" + keepaliveTimer.hashCode() + ") "
                             + fibs.s.isInputShutdown() + " - " + fibs.s.isOutputShutdown() + " - "
                             + fibs.terminating + " | last fibsline: " + fibs.getFibsLastLineSecondsAgo() + " sec"
                             + " | started: " + ((new Date()).getTime() - firstRun.getTime()) / 1000 + " sec ago"
@@ -626,46 +665,55 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                     }
 					
 					if(fibs.getFibsLastLineSecondsAgo() > FibsRunner.timoutSeconds && fibs.loggedIn) {
-						printDebug(" *** No line from fibs for " + FibsRunner.timoutSeconds + " seconds, RESTARTING ***");
+						printer.printLine(" *** No line from fibs for " + FibsRunner.timoutSeconds + " seconds, RESTARTING ***");
 						restartFibs();
 					}
 				} catch(NullPointerException e) {
-					printDebug("KeepAlive - NullPointerException, probably fibs is restarting");
+					printer.printLine("KeepAlive - NullPointerException, probably fibs is restarting");
 				} catch(Exception e) {
-					printDebug("KeepAlive - Exception: " + e.getMessage());
+					printer.printLine("KeepAlive - Exception: " + e.getMessage());
 				}
 				
 			}
 		};	
-		keepalivetimer.schedule(keepalivetimertask, 48000L, 28000L);
+		keepaliveTimer.schedule(keepaliveTimerTask, 48000L, 28000L);
 		
-		keepalivetimer.schedule(new TimerTask() {
+		keepaliveTimer.schedule(new TimerTask() {
 			@Override 
 			public void run() {
-				printDebug("KeepAlive+");
+				printer.printLine("KeepAlive+");
 				fibs.keepAlive();
 			}
 		}, 300000L, 300000L);
 	}
 
+	protected ArrayList<BufferedConsolePrinter> getPrinters() {
+        ArrayList<BufferedConsolePrinter> p = new ArrayList<BufferedConsolePrinter>();
+        p.add(systemPrinter);
+        p.add(fibs.linePrinter);
+        p.add(socketServerPrinter);
+        p.add(printer);
+        p.add(gnubg.matchPrinter);
+        p.add(fibs.matchinfoPrinter);
+        p.add(gnubg.eqPrinter);
+
+        return p;
+    }
+
     protected void suspendOutput(PrintStream output) {
-        fibs.linePrinter.setSuspended(output, true);
-        systemPrinter.setSuspended(output, true);
-        socketServerPrinter.setSuspended(output, true);
-        printer.setSuspended(output, true);
-        gnubg.matchPrinter.setSuspended(output, true);
-        gnubg.eqPrinter.setSuspended(output, true);
-        fibs.matchinfoPrinter.setSuspended(output, true);
+	    for (BufferedConsolePrinter p : getPrinters()) {
+	        try {
+	            p.setSuspended(output, true);
+            } catch (NullPointerException ignore) {}
+        }
     }
 
     protected void unSuspendOutput(PrintStream output) {
-        fibs.linePrinter.setSuspended(output, false);
-        systemPrinter.setSuspended(output, false);
-        socketServerPrinter.setSuspended(output, false);
-        printer.setSuspended(output, false);
-        gnubg.matchPrinter.setSuspended(output, false);
-        gnubg.eqPrinter.setSuspended(output, false);
-        fibs.matchinfoPrinter.setSuspended(output, false);
+        for (BufferedConsolePrinter p : getPrinters()) {
+            try {
+                p.setSuspended(output, false);
+            } catch (NullPointerException ignore) {}
+        }
     }
 
     protected void printWelcome(PrintStream output) {
@@ -677,11 +725,6 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
     }
 
     protected void printDebug(String str) {
-		int c = 0;
-		if(fibs != null) {
-			c = fibs.procGPcounter;
-		}
-		printer.setLabel("MatchDog[" + c + "]:");
 		printer.printLine(str);
 	}
 	
@@ -693,16 +736,13 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 			ois.close();
             return ps;
 		} catch (IOException e) {
-			printDebug(e.toString());
-			//e.printStackTrace();
+			printer.printLine(e.toString());
 			return null;
 		} catch (ClassNotFoundException e) {
-			printDebug(e.toString());
-			//e.printStackTrace();
+			printer.printLine(e.toString());
 			return null;
 		} catch (Exception e) {
-			printDebug(e.toString());
-			//e.printStackTrace();
+			printer.printLine(e.toString());
 			return null;
 		}
 	}
@@ -726,12 +766,12 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 		this.savedMatches = savedMatches;
 	}
 
-	public int getFibsmode() {
-		return fibsmode;
+	public int getFibsMode() {
+		return fibsMode;
 	}
 
-	public void setFibsmode(int fibsmode) {
-		this.fibsmode = fibsmode;
+	public void setFibsMode(int fibsMode) {
+		this.fibsMode = fibsMode;
 	}
 
     public String getLastopp() {

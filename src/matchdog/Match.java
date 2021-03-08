@@ -120,7 +120,7 @@ public class Match {
 	
 	private synchronized void checkStamps() {
 		
-		if( server.getFibsmode() < 2 ) {
+		if( server.getFibsMode() < 2 ) {
 			purgeStampTimer();
 		}
 			

@@ -1,5 +1,7 @@
 package matchdog;
 
+import sun.misc.Signal;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.net.*;

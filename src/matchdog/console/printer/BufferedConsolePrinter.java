@@ -53,7 +53,7 @@ public class BufferedConsolePrinter extends ConsoleColorPrinter {
 	public synchronized ConsolePrinter print(String msg, PrintStream os, String label) {
 		if(isSuspended(os)) {
 			if(!label.equals("")) {
-				label = getColor() + getBgColor()+ label + RESET + " ";
+				label = getColor() + getBgColor() + label + RESET + " ";
 			}
 			_buff(os, msg, label);
 		} else {

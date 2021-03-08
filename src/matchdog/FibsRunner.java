@@ -198,12 +198,9 @@ public class FibsRunner extends Thread {
 				
 				lastLine = System.nanoTime();
 
-				switch (server.getFibsmode()) {
+				switch (server.getFibsMode()) {
 
 					case FIBS_MODE_LOGGED_IN: // logged in mode
-						processInput(inputLine);
-					break;
-				
 					case FIBS_MODE_WATCH: // watch mode
 						processInput(inputLine);
 						break;
@@ -347,7 +344,7 @@ public class FibsRunner extends Thread {
 	
 		// print fibs output
 		// currently gameplay and tormonitor modes are filtered
-		if (server.getFibsmode() > FIBS_MODE_WATCH) {
+		if (server.getFibsMode() > FIBS_MODE_WATCH) {
 			if (filteredInput != null) {
 				linePrinter.printLine(filteredInput);
 			}
@@ -478,7 +475,7 @@ public class FibsRunner extends Thread {
 		// AUTOINVITE PREFERRED PLAYERS (from PlayerPrefs)
 		if (in.contains("wins a") || in.contains("has left the game")
 				|| (in.startsWith("7 ") && in.contains("logs in"))) {
-			if (server.getFibsmode() < FIBS_MODE_GAME_PLAY && server.prefs.isAutoinvite()) {
+			if (server.getFibsMode() < FIBS_MODE_GAME_PLAY && server.prefs.isAutoinvite()) {
 	
 				for (String opp : server.prefs.getPreferredOpps().keySet()) {
 	
@@ -499,18 +496,18 @@ public class FibsRunner extends Thread {
 				if (!opp.equals("")
 						&& in.toLowerCase().contains(
 								" " + opp.toLowerCase() + " ")) {
-					if(lastmatch != null && server.getFibsmode() == FIBS_MODE_GAME_PLAY && lastmatch.getWaitfor().equals(opp)) {
+					if(lastmatch != null && server.getFibsMode() == FIBS_MODE_GAME_PLAY && lastmatch.getWaitfor().equals(opp)) {
 						server.printDebug("WAITFOR OPP LOGGED IN, inviting");
 						sleepFibs(200);
 						server.fibsout.println("invite " + opp);
-					} else	if (server.getFibsmode() < FIBS_MODE_GAME_PLAY
+					} else	if (server.getFibsMode() < FIBS_MODE_GAME_PLAY
 							&& server.prefs.isAutoinvitesaved()) {
 						server.fibsout.println("tell " + opp + " Hi " + opp
 								+ "! Let's play our saved match.");
 						server.printDebug("Inviting for SAVED MATCH (" + opp
 								+ ")");
 						server.startInviter(opp, 0);
-					} else if (server.getFibsmode() == FIBS_MODE_GAME_PLAY) {
+					} else if (server.getFibsMode() == FIBS_MODE_GAME_PLAY) {
 						server.fibsout.println("tell " + opp + " Hi " + opp
 								+ "! There is still a saved match to finish.");
 					}
@@ -533,7 +530,7 @@ public class FibsRunner extends Thread {
 				// contains 'point match' could cause exception.
 				// Don't allow.
 				&& !in.startsWith("board:")
-				&& server.getFibsmode() < FIBS_MODE_GAME_PLAY) {
+				&& server.getFibsMode() < FIBS_MODE_GAME_PLAY) {
 			
 			// If 'show saved' didn't get through to fibs after login
 			// or wasn't issued after manual login the 'savedMatches'
@@ -896,7 +893,7 @@ public class FibsRunner extends Thread {
 		if (in.contains("One account per person only!"))
 			inithelper++;
 		if (in.startsWith("You're now watching"))
-			server.setFibsmode(1);
+			server.setFibsMode(1);
 	
 		// START A MATCH
         if (   in.contains(" has joined you")
@@ -1253,7 +1250,6 @@ public class FibsRunner extends Thread {
 				&& ownDoubleInProgress) {
 			server.printDebug("END GAME - got GIVE UP response to own double");
 			//server.printDebug("got GIVE UP response to own double");
-			server.printDebug("");
 			printMatchInfo();
 			ownDoubleInProgress = false;
 			match.setIngame(false);
@@ -1571,9 +1567,8 @@ public class FibsRunner extends Thread {
 					match.setTurn(new int[] { 0, 1 });
 					match.setRound(match.getRound() + 1);
 
-                    server.printer.printLine(" *** OPP's turn ***", "");
-                    server.printDebug("");
-                    server.fibs.printMatchInfo();
+                    server.printer.printLine("\n *** OPP's turn ***\n", "");
+                    printMatchInfo();
 				}
 
 
@@ -1635,9 +1630,8 @@ public class FibsRunner extends Thread {
                         match.setTurn(new int[] { 1, 0 });
                         match.setRound(match.getRound() + 1);
 
-                        server.printer.printLine(" *** My turn ***", "");
-                        server.printDebug("");
-                        server.fibs.printMatchInfo();
+                        server.printer.printLine("\n *** My turn ***\n", "");
+                        printMatchInfo();
 
 						return;
 					}
@@ -1678,8 +1672,7 @@ public class FibsRunner extends Thread {
 								+ " crawford: " + match.isCrawford() + "]");
 					}
 
-                    server.printer.printLine(" *** My turn ***", "");
-                    server.printDebug("");
+                    server.printer.printLine("\n *** My turn ***\n", "");
                     printMatchInfo();
 
 					return;
@@ -1702,8 +1695,7 @@ public class FibsRunner extends Thread {
 						match.setCube(match.getCube() * 2);
 						doubledInRound = match.getRound();
 
-                        server.printer.printLine(" *** OPP's turn ***", "");
-                        server.printDebug("");
+                        server.printer.printLine("\n *** OPP's turn ***\n", "");
                         printMatchInfo();
 
 						return;
@@ -1711,8 +1703,7 @@ public class FibsRunner extends Thread {
 				}
 				if (inputHasBoard && wOppDoubleBoard) {
 
-                    server.printer.printLine(" *** My turn ***", "");
-                    server.printDebug("");
+                    server.printer.printLine("\n *** My turn ***\n", "");
                     printMatchInfo();
 
 					server.printDebug("got OPP double board, sending to bgsocket");
@@ -1724,12 +1715,12 @@ public class FibsRunner extends Thread {
 	} //// END: PROCESSGAMEPLAY
 
 	private void startMatch(String in) {
-		if(server.getFibsmode() == FIBS_MODE_GAME_PLAY) {
+		if(server.getFibsMode() == FIBS_MODE_GAME_PLAY) {
 			// should never happen
 			server.printDebug(" ** !!! BUG !!! ** ");
 			return;
 		}
-		server.printDebug("startMatch, old fibsmode:" + server.getFibsmode());
+		server.printDebug("startMatch, old fibsmode:" + server.getFibsMode());
 	
 		server.stopInviter();
 	
@@ -1780,11 +1771,13 @@ public class FibsRunner extends Thread {
 			int ml = Integer.parseInt(mlstr);
 			this.match = new Match(server, oppname, ml);
 			server.matchCount++;
-			server.setFibsmode(2);
+			server.setFibsMode(2);
+
+			matchinfoPrinter.setLabel("MatchInfo[" + match.getPlayer1() + "]:");
 	
 			//while (!server.bgsocket.run) {}
 	
-			server.printDebug("new fibsmode:" + server.getFibsmode() + ", round: "
+			server.printDebug("new fibsmode:" + server.getFibsMode() + ", round: "
 					+ match.getRound() + " leaving startMatch");
 	
 			setInvitationInProgress(false);
@@ -1894,7 +1887,8 @@ public class FibsRunner extends Thread {
 			lastmatch = match;
 		}
 		match = null;
-		server.setFibsmode(0);
+		matchinfoPrinter.resetLabel();
+		server.setFibsMode(0);
 		wasResumed = false;		
 		server.printDebug("*** match terminated ***");	
 		sleepFibs(1200);
@@ -2050,7 +2044,7 @@ public class FibsRunner extends Thread {
 				+ match.getTotalTime() / 1000 / 60 + ":"
 				+ (match.getTotalTime() / 1000 - match.getTotalTime() / 1000 / 60 * 60)
 				+ " ]" + UnixConsole.RESET;
-		matchinfoPrinter.print(matchinfoStr);
+		matchinfoPrinter.printLine(matchinfoStr);
 	}
 
 	protected void printFibsCommand(String fibscommand) {

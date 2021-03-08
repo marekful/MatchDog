@@ -14,6 +14,7 @@ public class BGRunner  {
 
     // gnubg process
 	private Process p;
+	private long pid;
 	private final String[] gnubgCommands;
 	private final MatchDog server;
 	private final BufferedConsolePrinter printer;
@@ -53,13 +54,17 @@ public class BGRunner  {
         );
 	}
 
+    public long getPid() {
+        return pid;
+    }
+
     // proc
 	public boolean launch() {
         for (String cmd : gnubgCommands) {
             try {
                 printer.printLine("Trying to launch gnubg binary");
                 p = Runtime.getRuntime().exec(cmd);
-                long pid = p.pid();
+                pid = p.pid();
 
                 printer.setLabel("gnubg[pid=" + pid + "]:")
                        .printLine("gnubg running (" + cmd + ")");
@@ -110,7 +115,8 @@ public class BGRunner  {
             server.printDebug(server.prefs.getMoveFilter(i));
         }
 
-        //println("save settings");
+        println("show evaluation");
+        println("show rollout");
 
         println("external localhost:" + server.prefs.getGnuBgPort());
 	}
@@ -218,7 +224,7 @@ public class BGRunner  {
         processInput();
     }
 
-    private void closeSocket() {
+    public void closeSocket() {
         try {
             sIn.close();
             sOut.close();

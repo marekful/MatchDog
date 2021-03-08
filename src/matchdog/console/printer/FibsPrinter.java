@@ -10,6 +10,6 @@ public class FibsPrinter extends BufferedConsolePrinter {
 	}
 	
 	public String getLabel() {
-		return "fibs[mode=" + ((MatchDog)super.getSource()).getFibsmode() + "]:";
+		return "fibs[mode=" + ((MatchDog)super.getSource()).getFibsMode() + "]:";
 	}
 }
