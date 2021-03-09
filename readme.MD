@@ -157,7 +157,7 @@ By passing 0 as a second command line argument, stdin and stdout are not attache
 and MatchDog runs silently.
 
 When `i_listenerport` in the user pprefs file is set to a valid port number,
-MatchDog will expose that port on the host machine if it can
+MatchDog will expose that port on the host machine if it can and
 accept connections on it. This allows for remote monitoring of the bot.
 
 
