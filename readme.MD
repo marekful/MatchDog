@@ -137,9 +137,9 @@ On a Linux a system, change directory to `[PROJECT_ROOT]/bin`  where the compile
 files are located and issue the following command in a bash shell
 (assuming that the java binaries are on the path):
 
-`java matchdog/MatchDogServer [n]`
+`java matchdog/MatchDogServer N [0|1]`
 
-where `[n]` is the index number of the player preferences object
+where `N` is the index number of the player preferences object
 in the player map.
 
 There must be at least one user preferences object instantiated
@@ -155,6 +155,10 @@ where the information came from and also accepts user input from stdin to contro
 various things in the server while it's running, mostly for debugging purposes. 
 By passing 0 as a second command line argument, stdin and stdout are not attached 
 and MatchDog runs silently.
+
+When `i_listenerport` in the user pprefs file is set to a valid port number,
+MatchDog will expose that port on the host machine if it can
+accept connections on it. This allows for remote monitoring of the bot.
 
 
 **Example gnubg initialisation command sequence**
