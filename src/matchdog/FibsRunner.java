@@ -414,9 +414,9 @@ public class FibsRunner extends Thread {
 			getOppRating = false;
 			String [] split0 = in.split(" ");
 			
-			
 			if(match != null) {
 				match.setOppRating(Double.parseDouble(split0[6]));
+				match.setOppClient(split0[11]);
 			
 				server.printDebug("OPP RATING set to: " + match.getOppRating());
 			}
@@ -803,7 +803,7 @@ public class FibsRunner extends Thread {
 		
 		
 		// TELL ME MORE
-		if (in.startsWith("15") && in.toLowerCase().contains("tell me more")) {
+		if (in.startsWith("15") && in.toLowerCase().contains("tell me more") && !oppIsMatchDog()) {
 			server.fibsout
 					.println("kibitz I use the evaluation engine of GNU Backgammon (TM)");
 			try {
@@ -815,7 +815,7 @@ public class FibsRunner extends Thread {
 		}
 	
 		// SHOW SETTINGS
-		if (in.startsWith("15") && in.toLowerCase().contains("show settings")) {
+		if (in.startsWith("15") && in.toLowerCase().contains("show settings") && !oppIsMatchDog()) {
 			String [] settings = server.prefs.showPrefs();
 			for(String line : settings) {
 				if(!line.equals("")) {
@@ -833,14 +833,15 @@ public class FibsRunner extends Thread {
 				|| in.startsWith("15 " + opp + " play"))) {
 			if(match.isOppsTurn()) {
 				server.fibsout.println("k Is it not your turn?");
+			} else {
+				server.printDebug("RESENDING lastboard to gnubg");
+
+				sleepFibs(150);
+				server.fibsout.println("b");
+				sleepFibs(750);
+				resendlastboard = true;
+				return;
 			}
-			server.printDebug("RESENDING lastboard to gnubg");
-			
-			sleepFibs(150);
-			server.fibsout.println("b");
-			sleepFibs(750);
-			resendlastboard = true;
-			return;
 			
 		}
 		// CHAT
@@ -853,7 +854,7 @@ public class FibsRunner extends Thread {
 	
 		// SHOW STAT
 		if((in.startsWith("12 ") || in.startsWith("15 "))
-						&& in.toLowerCase().contains("show stat")) {
+				&& in.toLowerCase().contains("show stat") && !oppIsMatchDog()) {
 			String [] split0 = in.split(" ");
 			String statfor = split0[1];
 			if(!server.statview.dumpPlayerStat(statfor, 2)) {
@@ -865,15 +866,15 @@ public class FibsRunner extends Thread {
 		
 		// SHOW LOG
 		if((in.startsWith("12 ") || in.startsWith("15 ")) 
-						&& in.toLowerCase().contains("show log")) {
+				&& in.toLowerCase().contains("show log") && !oppIsMatchDog()) {
 			String [] split0 = in.split(" ");
 			String statfor = split0[1];
-			
-			if(server.statview.dumpPlayerStat(statfor, 3)) {
-				while(!server.statrequests.containsKey(statfor)) {}
-				String fn = server.statrequests.get(statfor);
-				Uploader ul = new Uploader(server, 0, fn);
-				ul.start();
+
+			if(!statfor.contains(server.getPlayerName()) && server.statview.dumpPlayerStat(statfor, 3)) {
+				//while(!server.statrequests.containsKey(statfor)) {}
+				//String fn = server.statrequests.get(statfor);
+				//Uploader ul = new Uploader(server, 0, fn);
+				//ul.start();
 			} else {
 				server.fibsout.println("tell " + statfor 
 						+ " No log for you since " 
@@ -911,6 +912,10 @@ public class FibsRunner extends Thread {
 
 	private FibsBoard inputGetBoard(String input) {
 		return new FibsBoard(input);
+	}
+
+	private boolean oppIsMatchDog() {
+		return match != null && match.getOppClient().equals(server.programPrefs.getPlatform());
 	}
 
 	private synchronized void processGamePlay(String in) {
@@ -1185,12 +1190,12 @@ public class FibsRunner extends Thread {
 		if(in.startsWith("rating calculation:")) {
 			match.setWaitRateCalc(true);
 		}
-		if(match.isWaitRateCalc() && in.startsWith("change for " + server.prefs.getUsername())) {
+		if(match.isWaitRateCalc() && in.startsWith("change for " + server.prefs.getUsername() + ":")) {
 			String [] split0 = in.split("=");
 			match.setOwnRatingChange(Double.parseDouble(split0[1]));
 			server.printDebug("OWN RATING CHANGE set to: " + match.getOwnRatingChange());
 		
-		} else if(match.isWaitRateCalc() && in.startsWith("change for " + match.getPlayer1())) {
+		} else if(match.isWaitRateCalc() && in.startsWith("change for " + match.getPlayer1() + ":")) {
 			String [] split0 = in.split("=");
 			match.setOppRatingChange(Double.parseDouble(split0[1]));
 			server.printDebug("OPP RATING CHANGE set to: " + match.getOppRatingChange());
@@ -1659,22 +1664,26 @@ public class FibsRunner extends Thread {
 						server.fibsout.println("double");
 					
 					} else */
-					if(match.isPostcrawford() && inputBoard.iMayDouble()
-							&& match.getRound() == 1 && !match.oneToWin()) {
+					// post crawford auto double
+					if(match.isPostcrawford() && inputBoard.iMayDouble() && !match.oneToWin()
+							   /* I double in round 2 when opp started game, in round 3 when I did */
+							&& (match.getRound() == 2 || match.getRound() == 3)) {
 						//match.setPostcrawford(false);
 						server.printDebug("POSTCRAWFORD DOUBLING");
 						sleepFibs(100);
 						server.fibsout.println("double");
 
-					} else
-                    if (match.getMl() > 1 && inputBoard.iMayDouble()
+					}
+					else if (match.getMl() > 1 && inputBoard.iMayDouble()
 							&& !match.isCrawford() && !match.oneToWin()) {
 
 						server.printDebug("sending. [candouble: " + inputBoard.iMayDouble()
 								+ " " + inputBoard.oppMayDouble() + " ml: "
 								+ match.getMl() + " score: " + inputBoard.getMyScore()
 								+ " " + inputBoard.getOppScore() + " crawford: "
-								+ match.isCrawford() + "]");
+								+ match.isCrawford() + " postCrawford: " + match.isPostcrawford()
+								+ (match.getCrawfordscore() > -1 ? "crawford-score: " + match.getCrawfordscore() : "")
+								+ "]");
 
 						//String _eqBrd = getEquitiesBoard(lastBoard);
 						//server.bgRunner.execBoard(_eqBrd);
@@ -1686,7 +1695,9 @@ public class FibsRunner extends Thread {
 								+ inputBoard.iMayDouble() + " " + inputBoard.oppMayDouble()
 								+ " ml: " + match.getMl() + " score: "
 								+ inputBoard.getMyScore() + " " + inputBoard.getOppScore()
-								+ " crawford: " + match.isCrawford() + "]");
+								+ " crawford: " + match.isCrawford() + " postCrawford: " + match.isPostcrawford()
+								+ (match.getCrawfordscore() > -1 ? "crawford-score: " + match.getCrawfordscore() : "")
+								+ "]");
 					}
 
                     server.printer.printLine("\n *** My turn ***\n", "");
@@ -1726,15 +1737,15 @@ public class FibsRunner extends Thread {
 					server.printDebug("got OPP double board, sending to bgsocket");
 					wOppDoubleBoard = false;
 
-					server.bgRunner.execBoard(in);
+					//-//server.bgRunner.execBoard(in);
 
-					/*server.printDebug("OPP double board origi: " + in);
+					server.printDebug("OPP double board origi: " + in);
 					FibsBoard dblBoard = new FibsBoard(in);
 					if (dblBoard.getDirection() == 1) {
 						dblBoard.setDirection(-1);
 					}
 					server.printDebug("OPP double board dirrev: " + dblBoard.toString());
-					server.bgRunner.execBoard(dblBoard.toString());*/
+					server.bgRunner.execBoard(dblBoard.toString());
 				}
 			}
 		} //// END: PROCESS TURN
@@ -1818,7 +1829,7 @@ public class FibsRunner extends Thread {
 	private void stopMatch() {
 
 		if (server.bgRunner != null) {
-			server.bgRunner.killGnubg(false);
+			server.bgRunner.killGnubg(match.isDropped());
 		}
 
         match.setFinished(true);
@@ -1913,7 +1924,7 @@ public class FibsRunner extends Thread {
 		}
 		
 	
-		if(match.isDropped())  {
+		if(match != null && match.isDropped())  {
 			lastmatch = match;
 		}
 		match = null;

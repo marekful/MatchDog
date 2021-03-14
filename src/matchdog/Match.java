@@ -11,7 +11,7 @@ import java.util.TimerTask;
 
 public class Match {
 
-	String player0, player1;
+	String player0, player1, oppClient;
 	int ml;
 	int [] score = {0,0};
 	int [] dice = {0,0};
@@ -60,6 +60,7 @@ public class Match {
 		droppedat = null;
 		mystamp = null;
 		oppstamp = null;
+		oppClient = null;
 		
 		stamptimer = new Timer();
 		stamptimertask = new TimerTask() 
@@ -154,7 +155,7 @@ public class Match {
 				callcounter++;
 				
 			} else if(diff > 120000 && callcounter < 3) {
-				server.resendLastBoard();
+				//server.resendLastBoard();
 				callcounter++;
 			} else if(diff > 180000) {
 				server.printDebug("OPP IS INACTIVE for :" + diff / 1000 + " seconds, LEAVING");
@@ -199,6 +200,14 @@ public class Match {
 
 	public String getPlayer1() {
 		return player1;
+	}
+
+	public String getOppClient() {
+		return oppClient;
+	}
+
+	public void setOppClient(String oppClient) {
+		this.oppClient = oppClient;
 	}
 
 	public int[] getDice() {
@@ -417,12 +426,14 @@ public class Match {
 
 	public String matchInfo() {
 		return UnixConsole.BLACK + UnixConsole.BACKGROUND_WHITE
-				+ " [ turn: " + turn[0] + " " + turn[1] + " | round: "
+				+ "[ turn: " + turn[0] + " " + turn[1] + " | round: "
 				+ getRound() + " | game: " + getGameno() + " | cube: "
 				+ getCube() + " | ml: " + getMl() + " | score: "
 				+ score[0] + " " + score[1] + " | time: "
 				+ getTotalTime() / 1000 / 60 + ":"
 				+ (getTotalTime() / 1000 - getTotalTime() / 1000 / 60 * 60)
+				+ (crawford ? " | crawford" : "") + (postcrawford ? " | post-crawford" : "")
+				+ (getCrawfordscore() > -1 ? " @: " + getCrawfordscore() : "")
 				+ " ]" + UnixConsole.RESET;
 	}
 
