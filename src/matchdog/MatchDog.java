@@ -17,7 +17,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 
     long pid;
 
-	BGRunner gnubg;
+	BGRunner bgRunner;
 	FibsRunner fibs;
 	OutputStream gnubgos;
 	PrintWriter gnubgout;
@@ -63,7 +63,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 		this.listenLocal = listenLocal;
         this.hostName = hostName;
 		
-		gnubg = null;
+		bgRunner = null;
 		fibs = null;
 		gnubgos = null;
 		gnubgout = null;
@@ -120,7 +120,8 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 				setFibsMode(3);
 			} else {
 
-				initGnuBg();
+				//initGnuBg();
+                bgRunner = new BGRunner(programPrefs.getGnubgCmdArr(), this);
 				
 				initPlayerStats();
 				statview = new StatWriter(this);
@@ -246,18 +247,16 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                 }
 
                 if (line.length() == 1) {
-                    int code = (int) line.charAt(0);
-                    out.print(code);
-                    switch (code) {
-                        // exit shell
-                        case 27:
-                            //output.print("Leaving MatchDog Shell");
-                            leaveShell(out);
-                            continue;
+                    // exit shell
+                    if (line.charAt(0) == 27) {
+                        leaveShell(out);
+                        continue;
                     }
                 }
 
                 contd = true;
+
+
 
                 if (line.equals("exit")) {
                     unSuspendOutput(out);
@@ -269,17 +268,17 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                 }
 
                 if (line.equals("2")) {
-                    writer = gnubg.getProcOut();
+                    writer = bgRunner.getProcOut();
                     outputName = "gnubgout";
                 } else if (line.equals("1")) {
                     writer = fibsout;
                     outputName = "fibsout";
                 } else if (line.equals("6")) {
-                    writer = gnubg.getScokOut();
+                    writer = bgRunner.getScokOut();
                     outputName = "bgsocket.out";
                 } else if (line.equals("8")) {
                     if (fibs.lastboard != null) {
-                        gnubg.execBoard(fibs.lastboard.trim());
+                        bgRunner.execBoard(fibs.lastboard.trim());
                     }
                     continue;
                 } else if (line.equals("16")) {
@@ -371,8 +370,8 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                     leaveShell(out);
                     continue;
                 } else if (line.equals("44")) {
-                    gnubg.closeSocket();
-                    Runtime.getRuntime().exec("kill -SIGINT " + gnubg.getPid());
+                    bgRunner.closeSocket();
+                    Runtime.getRuntime().exec("kill -SIGINT " + bgRunner.getPid());
                     leaveShell(out);
                     continue;
                 } else if (line.equals("refibs")) {
@@ -383,7 +382,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                 } else if (line.equals("rebg")) {
                     leaveShell(out);
                     unSuspendOutput(out);
-                    gnubg.restartGnubg();
+                    bgRunner.restartGnubg();
                     continue;
                 } else if (line.equals("uptime")) {
                     out.print(TimeAgo.fromMs(System.currentTimeMillis() - serverStartedAt.getTime()));
@@ -515,7 +514,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 	}
 
 
-	protected void initGnuBg() {
+	/*protected void initGnuBg() {
         systemPrinter.printLine("Initialising gnubg...");
         gnubg = new BGRunner(programPrefs.getGnubgCmdArr(), this);
 
@@ -525,21 +524,29 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
         }
         gnubg.setup();
         gnubg.connectSocket();
-	}
+	}*/
 
 	protected void stopGnubg() {
-		if(gnubg == null)
+		if(bgRunner == null)
 			return;
-		gnubg.terminate();
-		gnubg = null;
+		bgRunner.killGnubg();
+		bgRunner = null;
         systemPrinter.printLine("Gnubg terminated");
 	}
+
+	public boolean isPlaying() {
+	    return fibs.match != null;
+    }
+
+    public Match getMatch() {
+	    return fibs.match;
+    }
 	
 	protected void resendLastBoard() {
 		fibsout.println("b");
 		printer.printLine("Resending last board: " + fibs.lastboard);;
 		fibs.sleepFibs(600);
-		gnubg.execBoard(fibs.lastboard.trim());
+		bgRunner.execBoard(fibs.lastboard.trim());
 	}
 
 	protected void initPlayerStats() {
@@ -688,14 +695,16 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 	}
 
 	protected ArrayList<BufferedConsolePrinter> getPrinters() {
-        ArrayList<BufferedConsolePrinter> p = new ArrayList<BufferedConsolePrinter>();
+        ArrayList<BufferedConsolePrinter> p = new ArrayList<>();
         p.add(systemPrinter);
-        p.add(fibs.linePrinter);
         p.add(socketServerPrinter);
         p.add(printer);
-        p.add(gnubg.matchPrinter);
-        p.add(fibs.matchinfoPrinter);
-        p.add(gnubg.eqPrinter);
+        p.add(bgRunner.matchPrinter);
+        p.add(bgRunner.matchPrinter);
+        p.add(bgRunner.eqPrinter);
+        p.add(fibs.matchInfoPrinter);
+        p.add(fibs.fibsCommandPrinter);
+        p.add(fibs.linePrinter);
 
         return p;
     }

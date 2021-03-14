@@ -12,6 +12,6 @@ public class MatchDogPrinter extends BufferedConsolePrinter {
     public String getLabel() {
         MatchDog g = ((MatchDog)super.getSource());
         int c = g.getGPC();
-        return g.getPlayerName() + ( c > -1 ? "[" + c + "]" : "") + ":";
+        return g.getPlayerName() + ( c > 0 ? "[" + c + "]" : "") + ":";
     }
 }

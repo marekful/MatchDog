@@ -94,43 +94,69 @@ public class BGRunner  {
         println("set eval sameasanalysis off");
 
         println("set chequer evaluation prune on");
-        if(server.prefs.getMaxml() == 1) {
-            println("set evaluation chequer eval cubeful off");
-        }
-        println("set threads 4");
 
         println("set evaluation chequer eval plies " + checkquerply);
         println("set evaluation cubedecision eval plies " + cubedecply);
 
         for(int i = 0; i < 10; i++) {
+            server.printDebug("Setting movefilter: " + server.prefs.getMoveFilter(i));
             println("set evaluation movefilter " + server.prefs.getMoveFilter(i) );
-            server.printDebug(server.prefs.getMoveFilter(i));
+            println("set rollout player 0 movefilter " + server.prefs.getMoveFilter(i));
+            //-println("set rollout chequerplay movefilter " + server.prefs.getMoveFilter(i));
+            //-println("set movefilter " + server.prefs.getMoveFilter(i));
         }
 
         println("set rollout chequer plies " + checkquerply);
         println("set rollout cubedecision plies " + cubedecply);
-
-        for(int i = 0; i < 10; i++) {
-            println("set movefilter " + server.prefs.getMoveFilter(i) );
-            server.printDebug(server.prefs.getMoveFilter(i));
+        if(server.prefs.getMaxml() == 1) {
+            println("set evaluation chequer eval cubeful off");
+            println("set evaluation cubedecision eval cubeful off");
+            println("set rollout chequerplay cubeful off");
+            println("set rollout cubedecision cubeful off");
         }
 
+
+        printer.printLine("");
         println("show evaluation");
+        printer.printLine("");
         println("show rollout");
 
         println("external localhost:" + server.prefs.getGnuBgPort());
 	}
 
-	public void terminate() {
-        closeSocket();
-		println("quit");
-		p.destroy();
+	public void killGnubg() {
+
+        if (sIn != null) {
+            closeSocket();
+        }
+
+        if (p != null && p.isAlive()) {
+            if (!pOut.checkError()) {
+                println("quit");
+            }
+            p.destroy();
+        }
+
+        p = null;
 	}
+
+	public void startGnubg() {
+	    if (p != null && p.isAlive()) {
+	        killGnubg();
+        }
+
+	    if (!launch()) {
+	        throw new RuntimeException("Cannot launch gnubg binary");
+        }
+
+	    setup();
+	    connectSocket();
+    }
 
 	public void restartGnubg() {
         try {
             Thread.sleep(150);
-            terminate();
+            killGnubg();
             Thread.sleep(150);
             if (!launch()) {
                 server.stopServer();
@@ -146,6 +172,7 @@ public class BGRunner  {
         try {
             Thread.sleep(24);
         } catch (InterruptedException e) {
+            server.systemPrinter.printLine("InterruptedException in BGRunner.println");
             return;
         }
         processInput();

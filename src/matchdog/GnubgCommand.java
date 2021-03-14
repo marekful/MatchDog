@@ -104,9 +104,9 @@ public class GnubgCommand implements Runnable {
                 printer.printLine(" ** !!11 ** << Restarting gnubg >> "
                         + (isEvalcmd ? "EVAL" : "BOARD") + " -   cmd: " + command);
                 printer.printLine("  reply: " + rawReply);
-
-                throw new RuntimeException("Unexpected response from gnubg");
             }
+
+            throw new RuntimeException("Unexpected response from gnubg");
         }
 
         if(isEvalcmd) {

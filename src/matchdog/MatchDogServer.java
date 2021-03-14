@@ -58,7 +58,7 @@ public class MatchDogServer {
 			getLocalHostname(),
 			listenLocal
 		);
-        (new Thread(g)).start();
+        (new Thread(g, g.getPlayerName() + "-main")).start();
 		
 		if(g.prefs.getListenerport() > 0) {
 			SocketServer ss = new SocketServer(g);
@@ -87,6 +87,7 @@ public class MatchDogServer {
 		ServerSocket serverSocket = null;
         MatchDog matchdog;
         int listenerPort;
+        int externalConnections = 0;
 
         SocketServer(MatchDog matchdog) {
             this.matchdog = matchdog;
@@ -120,7 +121,7 @@ public class MatchDogServer {
         }
 
         public void acceptNewConnection() {
-            (new Thread(new ConnectionHandle())).start();
+            (new Thread(new ConnectionHandle(), matchdog.getPlayerName() + "-extconn-" + (++externalConnections))).start();
         }
 
         private class ConnectionHandle implements Runnable {

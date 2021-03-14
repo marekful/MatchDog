@@ -1,5 +1,7 @@
 package matchdog;
 
+import jcons.src.com.meyling.console.UnixConsole;
+
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -152,10 +154,10 @@ public class Match {
 				server.fibs.sleepFibs(250);
 				callcounter++;
 				
-			} else if(diff > 60000 && callcounter < 3) {
+			} else if(diff > 120000 && callcounter < 3) {
 				server.resendLastBoard();
 				callcounter++;
-			} else if(diff > 120000) {
+			} else if(diff > 180000) {
 				server.printDebug("OPP IS INACTIVE for :" + diff / 1000 + " seconds, LEAVING");
 				server.fibsout.println("leave");
 			}
@@ -412,6 +414,17 @@ public class Match {
 
 	public void setOppResignInProgress(boolean oppResignInProgress) {
 		this.oppResignInProgress = oppResignInProgress;
+	}
+
+	public String matchInfo() {
+		return UnixConsole.BLACK + UnixConsole.BACKGROUND_WHITE
+				+ " [ turn: " + turn[0] + " " + turn[1] + " | round: "
+				+ getRound() + " | game: " + getGameno() + " | cube: "
+				+ getCube() + " | ml: " + getMl() + " | score: "
+				+ score[0] + " " + score[1] + " | time: "
+				+ getTotalTime() / 1000 / 60 + ":"
+				+ (getTotalTime() / 1000 - getTotalTime() / 1000 / 60 * 60)
+				+ " ]" + UnixConsole.RESET;
 	}
 
 	private void initChatTexts() {
