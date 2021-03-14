@@ -513,23 +513,10 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 		initFibs();
 	}
 
-
-	/*protected void initGnuBg() {
-        systemPrinter.printLine("Initialising gnubg...");
-        gnubg = new BGRunner(programPrefs.getGnubgCmdArr(), this);
-
-        if(!gnubg.launch()) {
-            stopServer();
-            return;
-        }
-        gnubg.setup();
-        gnubg.connectSocket();
-	}*/
-
 	protected void stopGnubg() {
 		if(bgRunner == null)
 			return;
-		bgRunner.killGnubg();
+		bgRunner.killGnubg(false);
 		bgRunner = null;
         systemPrinter.printLine("Gnubg terminated");
 	}

@@ -48,7 +48,7 @@ public class FibsBoard {
     // split[51]
     boolean didCrawford;
 
-    private String rawInput;
+    private final String rawInput;
 
     public FibsBoard(String boardStr) {
         this.rawInput = boardStr;
@@ -71,7 +71,7 @@ public class FibsBoard {
         setMatchLength(Integer.parseInt(parts[3]));
         setMyScore(Integer.parseInt(parts[4]));
         setOppScore(Integer.parseInt(parts[5]));
-        setBoard(new BoardState(Arrays.copyOfRange(parts, 6, 31)));
+        setBoard(new BoardState(Arrays.copyOfRange(parts, 6, 32)));
         setTurn(Integer.parseInt(parts[32]));
         setMyDice(new Dice(Integer.parseInt(parts[33]), Integer.parseInt(parts[34])));
         setOppDice(new Dice(Integer.parseInt(parts[35]), Integer.parseInt(parts[36])));
@@ -255,5 +255,67 @@ public class FibsBoard {
 
     public void setDidCrawford(boolean didCrawford) {
         this.didCrawford = didCrawford;
+    }
+
+    public String toString() {
+        String[] boardState = getBoard().getState();
+        String[] out = new String[53];
+        out[0] = "board";
+        out[1] = "You";
+        out[2] = oppName;
+        out[3] = "" + matchLength;
+        out[4] = "" + myScore;
+        out[5] = "" + oppScore;
+
+        out[6] = boardState[0];
+        out[7] = boardState[1];
+        out[8] = boardState[2];
+        out[9] = boardState[3];
+        out[10] = boardState[4];
+        out[11] = boardState[5];
+        out[12] = boardState[6];
+        out[13] = boardState[7];
+        out[14] = boardState[8];
+        out[15] = boardState[9];
+        out[16] = boardState[10];
+        out[17] = boardState[11];
+        out[18] = boardState[12];
+        out[19] = boardState[13];
+        out[20] = boardState[14];
+        out[21] = boardState[15];
+        out[22] = boardState[16];
+        out[23] = boardState[17];
+        out[24] = boardState[18];
+        out[25] = boardState[19];
+        out[26] = boardState[20];
+        out[27] = boardState[21];
+        out[28] = boardState[22];
+        out[29] = boardState[23];
+        out[30] = boardState[24];
+        out[31] = boardState[25];
+
+        out[32] = "" + turn;
+        out[33] = "" + myDice.getDie1();
+        out[34] = "" + myDice.getDie2();
+        out[35] = "" + oppDice.getDie2();
+        out[36] = "" + oppDice.getDie2();
+        out[37] = "" + doublingCube;
+        out[38] = "" + (iMayDouble ? "1" : "0");
+        out[39] = "" + (iMayDouble ? "1" : "0");
+        out[40] = "" + (wasDoubled ? "1" : "0");
+        out[41] = "" + colour;
+        out[42] = "" + direction;
+        out[43] = "0";
+        out[44] = "25";
+        out[45] = "" + iRemovedPieces;
+        out[46] = "" + oppRemovedPieces;
+        out[47] = "" + iHaveOnBar;
+        out[48] = "" + oppHasOnBar;
+        out[49] = "" + canMove;
+        out[50] = "0";
+        out[51] = "" + (didCrawford ? "1" : "0");
+        out[52] = "0";
+
+        return String.join(":", out);
     }
 }

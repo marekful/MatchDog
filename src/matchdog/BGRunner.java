@@ -124,7 +124,7 @@ public class BGRunner  {
         println("external localhost:" + server.prefs.getGnuBgPort());
 	}
 
-	public void killGnubg() {
+	public void killGnubg(boolean force) {
 
         if (sIn != null) {
             closeSocket();
@@ -134,7 +134,13 @@ public class BGRunner  {
             if (!pOut.checkError()) {
                 println("quit");
             }
-            p.destroy();
+            if (p != null) {
+                if (force) {
+                    p.destroyForcibly();
+                } else {
+                    p.destroy();
+                }
+            }
         }
 
         p = null;
@@ -142,7 +148,7 @@ public class BGRunner  {
 
 	public void startGnubg() {
 	    if (p != null && p.isAlive()) {
-	        killGnubg();
+	        killGnubg(true);
         }
 
 	    if (!launch()) {
@@ -156,7 +162,7 @@ public class BGRunner  {
 	public void restartGnubg() {
         try {
             Thread.sleep(150);
-            killGnubg();
+            killGnubg(true);
             Thread.sleep(150);
             if (!launch()) {
                 server.stopServer();

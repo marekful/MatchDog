@@ -134,14 +134,13 @@ public class Match {
 		if(isMyTurn()) {
 			diff = now.getTime() - getMystamp().getTime() - fibsDiff * 1000;
 			server.printDebug("(my diff is " + diff + "(" + fibsDiff * 1000 + ") ms)");
-			if(diff > 40000) {
-				if(isOwnResignInProgress()) {
-					server.fibsout.println("k I resigned, check your client!" +
-							" Accept or reject it.");
-				} else {
-					server.printDebug("RESENDING lastboard (checkStamps)");
-					server.resendLastBoard();
-				}
+			if (diff > 40000 && isOwnResignInProgress()) {
+				server.fibsout.println("k I resigned, check your client!" +
+						" Accept or reject it.");
+			}
+			if(diff > 120000 && !isOwnResignInProgress()) {
+				server.printDebug("RESENDING lastboard (checkStamps)");
+				server.resendLastBoard();
 			}
 		} else if(isOppsTurn()) {
 			diff = now.getTime() - getOppstamp().getTime() - fibsDiff * 1000;

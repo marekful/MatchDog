@@ -393,7 +393,7 @@ public class FibsRunner extends Thread {
 		}
 		
 		// OWN Rating
-		if (in.startsWith("5 " + server.prefs.getUsername()) && getOwnRating) {
+		if (match != null && in.startsWith("5 " + server.getPlayerName() + " ") && getOwnRating) {
 			getOwnRating = false;
 			String [] split0 = in.split(" ");
 			server.setOwnRating(Double.parseDouble(split0[6]));
@@ -410,7 +410,7 @@ public class FibsRunner extends Thread {
 		}
 	
 		// OPP Rating
-		if (match != null && in.startsWith("5 " + match.getPlayer1()) && getOppRating) {
+		if (match != null && in.startsWith("5 " + match.getPlayer1() + " " + server.getPlayerName()) && getOppRating) {
 			getOppRating = false;
 			String [] split0 = in.split(" ");
 			
@@ -994,8 +994,8 @@ public class FibsRunner extends Thread {
 						+ match.getTurn()[1]);
 			}
 
-			if (in.toLowerCase().startsWith(
-					"turn: " + match.getPlayer1().toLowerCase()))
+			if (in.toLowerCase().equals(
+					"turn: " + match.getPlayer1().toLowerCase() + "."))
             {
 				server.printDebug("setting resumeparams: " + in);
 				match.setTurn(new int[] { 0, 1 });
@@ -1466,14 +1466,14 @@ public class FibsRunner extends Thread {
 							&& !(wasResumed && inputBoard.didCrawford())) {
 						match.setCrawford(true);
 						match.setCrawfordscore(match.getScore()[0]);
-						server.printDebug("setting CRAWFORD ON");
+						server.printDebug("setting CRAWFORD");
 					} else if (match.getScore()[0] > match.getCrawfordscore()
 							&& match.isCrawford()) {
 						match.setCrawford(false);
 						match.setPostcrawford(true);
 						// does this work??
 						//server.gnubgout.println("set crawford off");
-						//server.printDebug("setting CRAWFORD OFF");
+						server.printDebug("setting POST-CRAWFORD");
 					}
 				} else {
 					server.printDebug("NOT setting CRAWFORD");
@@ -1659,6 +1659,14 @@ public class FibsRunner extends Thread {
 						server.fibsout.println("double");
 					
 					} else */
+					if(match.isPostcrawford() && inputBoard.iMayDouble()
+							&& match.getRound() == 1 && !match.oneToWin()) {
+						//match.setPostcrawford(false);
+						server.printDebug("POSTCRAWFORD DOUBLING");
+						sleepFibs(100);
+						server.fibsout.println("double");
+
+					} else
                     if (match.getMl() > 1 && inputBoard.iMayDouble()
 							&& !match.isCrawford() && !match.oneToWin()) {
 
@@ -1669,7 +1677,7 @@ public class FibsRunner extends Thread {
 								+ match.isCrawford() + "]");
 
 						//String _eqBrd = getEquitiesBoard(lastBoard);
-						//server.gnubg.execBoard(_eqBrd);
+						//server.bgRunner.execBoard(_eqBrd);
 
 						server.bgRunner.execBoard(in);
 
@@ -1717,7 +1725,16 @@ public class FibsRunner extends Thread {
 
 					server.printDebug("got OPP double board, sending to bgsocket");
 					wOppDoubleBoard = false;
+
 					server.bgRunner.execBoard(in);
+
+					/*server.printDebug("OPP double board origi: " + in);
+					FibsBoard dblBoard = new FibsBoard(in);
+					if (dblBoard.getDirection() == 1) {
+						dblBoard.setDirection(-1);
+					}
+					server.printDebug("OPP double board dirrev: " + dblBoard.toString());
+					server.bgRunner.execBoard(dblBoard.toString());*/
 				}
 			}
 		} //// END: PROCESS TURN
@@ -1800,7 +1817,9 @@ public class FibsRunner extends Thread {
 
 	private void stopMatch() {
 
-		server.bgRunner.killGnubg();
+		if (server.bgRunner != null) {
+			server.bgRunner.killGnubg(false);
+		}
 
         match.setFinished(true);
         match.purgeStampTimer();
