@@ -55,6 +55,8 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 	MatchDogPrinter printer;
     DefaultPrinter systemPrinter;
     DefaultPrinter socketServerPrinter;
+
+    Map<String, Boolean> debug;
 	
 	MatchDog(ProgramPrefs progPrefs, PlayerPrefs prefs, HashMap<Integer, String> bl, String hostName, boolean listenLocal) {
 
@@ -101,6 +103,9 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
             this, "socketServer[port=" + prefs.getListenerport() + "]:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_RED
         );
 
+        debug = new HashMap<>();
+        debug.put("printGnubgCommand", false);
+
         if(listenLocal) {
             listeners.put(0, System.out);
         }
@@ -108,7 +113,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
         pid = Long.parseLong(java.lang.management.ManagementFactory.getRuntimeMXBean().getName().split("@")[0]);
         systemPrinter.printLine("Started MatchDog server PID: " + pid)
                 .setLabel("system[pid=" + pid + "]:");
-	}
+    }
 
     public void run() {
 	
@@ -120,7 +125,6 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 				setFibsMode(3);
 			} else {
 
-				//initGnuBg();
                 bgRunner = new BGRunner(programPrefs.getGnubgCmdArr(), this);
 				
 				initPlayerStats();
@@ -171,14 +175,18 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
         }
 	    return fibs.procGPcounter;
     }
-	
-	public void listen(InputStream in, PrintStream out) {
+
+    public void listen(InputStream in, PrintStream out) {
 		
 		boolean exit = true;
         contd = false;
         welcome = true;
 		int listenerId = listeners.size();
 
+		/*
+		* Add SIGINT handler for each listener - stdin and/or socket connection(s)
+		* (This requires the undocumented -XDignore.symbol.file to suppress compiler warnings)
+		*/
         Signal.handle(new Signal("INT"), signal -> {
             if (systemPrinter.isSuspended(out)) {
                 unSuspendOutput(out);
@@ -200,6 +208,13 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
         try {
             String line = "";
             for (; ; ) {
+
+                // ENTER/LEAVE MatchDog SHELL //
+                /*
+                * The default is the parent shell where every printer prints,
+                * by sending newline (empty line + enter), printers are suspended
+                * and we enter "MatchDog shell"
+                * */
                 if (contd) {
                     inMatchDogShell.put(out, true);
                     if (welcome) {
@@ -215,8 +230,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                     unSuspendOutput(out);
                 }
 
-
-
+                // READ INPUT / HANDLE ERROR / SHELL CONTROL
                 try {
                     line = input.readLine();
                 } catch (IOException e) {
@@ -224,7 +238,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                     break;
                 }
 
-                if(out.checkError()) {
+                if (out.checkError()) {
                     exit = false;
                     break;
                 }
@@ -256,7 +270,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 
                 contd = true;
 
-
+                //onLi
 
                 if (line.equals("exit")) {
                     unSuspendOutput(out);
@@ -372,6 +386,10 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                 } else if (line.equals("44")) {
                     bgRunner.closeSocket();
                     Runtime.getRuntime().exec("kill -SIGINT " + bgRunner.getPid());
+                    leaveShell(out);
+                    continue;
+                } else if (line.equals("55")) {
+                    debug.put("printGnubgCommand", true);
                     leaveShell(out);
                     continue;
                 } else if (line.equals("refibs")) {

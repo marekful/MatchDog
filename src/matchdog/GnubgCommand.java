@@ -6,6 +6,8 @@ import matchdog.console.printer.BufferedConsolePrinter;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
@@ -20,6 +22,7 @@ public class GnubgCommand implements Runnable {
     BufferedConsolePrinter eqPrinter;
     String command;
     boolean isEvalcmd;
+    Map<String, Boolean> debug;
 
     GnubgCommand(MatchDog server,
                  BufferedReader input,
@@ -27,7 +30,8 @@ public class GnubgCommand implements Runnable {
                  BufferedConsolePrinter printer,
                  BufferedConsolePrinter eqPrinter,
                  String command,
-                 boolean isEvalcmd)
+                 boolean isEvalcmd,
+                 Map<String, Boolean> debug)
     {
         this.server = server;
         this.input = input;
@@ -36,6 +40,7 @@ public class GnubgCommand implements Runnable {
         this.eqPrinter = eqPrinter;
         this.command = command;
         this.isEvalcmd = isEvalcmd;
+        this.debug = debug;
     }
 
     private void sendCommand() {
@@ -44,6 +49,9 @@ public class GnubgCommand implements Runnable {
         output.printf("%s", command + "\r\n");
         msg += "(" + ((System.nanoTime() - sockettime) / 1000000.0) + " ms) OK, waiting for reply";
         printer.printLine(msg);
+        if (debug.get("printGnubgCommand").equals(true)) {
+            printer.printLine(command);
+        }
     }
 
     @Override

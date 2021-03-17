@@ -34,7 +34,10 @@ public class FibsBoard {
     private int colour;
     // split[42]
     private int direction;
-    // skip split[43-44]
+    // split[43]
+    private int homeBar0;
+    // split[44]
+    private int homeBar1;
     // split[45]
     private int iRemovedPieces;
     // split[46]
@@ -45,6 +48,8 @@ public class FibsBoard {
     private int oppHasOnBar;
     // split[49]
     private int canMove;
+    // split[50]
+    private int forcedMoves;
     // split[51]
     boolean didCrawford;
 
@@ -81,11 +86,14 @@ public class FibsBoard {
         setWasDoubled(parts[40].equals("1"));
         setColour(Integer.parseInt(parts[41]));
         setDirection(Integer.parseInt(parts[42]));
+        setHomeBar0(Integer.parseInt(parts[43]));
+        setHomeBar1(Integer.parseInt(parts[44]));
         setIRemovedPieces(Integer.parseInt(parts[45]));
         setOppRemovedPieces(Integer.parseInt(parts[46]));
         setIHaveOnBar(Integer.parseInt(parts[47]));
         setOppHasOnBar(Integer.parseInt(parts[48]));
         setCanMove(Integer.parseInt(parts[49]));
+        setForcedMoves(Integer.parseInt(parts[50]));
         setDidCrawford(Integer.parseInt(parts[51]) == 1);
     }
 
@@ -205,6 +213,22 @@ public class FibsBoard {
         this.direction = direction;
     }
 
+    public int getHomeBar0() {
+        return homeBar0;
+    }
+
+    public void setHomeBar0(int homeBar0) {
+        this.homeBar0 = homeBar0;
+    }
+
+    public int getHomeBar1() {
+        return homeBar1;
+    }
+
+    public void setHomeBar1(int homeBar1) {
+        this.homeBar1 = homeBar1;
+    }
+
     public int getIRemovedPieces() {
         return iRemovedPieces;
     }
@@ -243,6 +267,14 @@ public class FibsBoard {
 
     public void setCanMove(int canMove) {
         this.canMove = canMove;
+    }
+
+    public int getForcedMoves() {
+        return forcedMoves;
+    }
+
+    public void setForcedMoves(int forcedMoves) {
+        this.forcedMoves = forcedMoves;
     }
 
     public int [] getScore() {
@@ -301,18 +333,18 @@ public class FibsBoard {
         out[36] = "" + oppDice.getDie2();
         out[37] = "" + doublingCube;
         out[38] = "" + (iMayDouble ? "1" : "0");
-        out[39] = "" + (iMayDouble ? "1" : "0");
+        out[39] = "" + (oppMayDouble ? "1" : "0");
         out[40] = "" + (wasDoubled ? "1" : "0");
         out[41] = "" + colour;
         out[42] = "" + direction;
-        out[43] = "0";
-        out[44] = "25";
+        out[43] = "" + homeBar0;
+        out[44] = "" + homeBar1;
         out[45] = "" + iRemovedPieces;
         out[46] = "" + oppRemovedPieces;
         out[47] = "" + iHaveOnBar;
         out[48] = "" + oppHasOnBar;
         out[49] = "" + canMove;
-        out[50] = "0";
+        out[50] = "" + forcedMoves;
         out[51] = "" + (didCrawford ? "1" : "0");
         out[52] = "0";
 

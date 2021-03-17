@@ -87,34 +87,42 @@ public class BGRunner  {
 
     public void setup() {
 
-        int checkquerply = server.prefs.getCheckquerply();
-        int cubedecply = server.prefs.getCubedecply();
+        int chequerPlayPly = server.prefs.getCheckquerply();
+        int cubeDecisionPly = server.prefs.getCubedecply();
+
         println("show version");
 
         println("set eval sameasanalysis off");
 
-        println("set chequer evaluation prune on");
+        println("set evaluation chequer eval plies " + chequerPlayPly);
+        println("set evaluation cubedecision eval plies " + cubeDecisionPly);
 
-        println("set evaluation chequer eval plies " + checkquerply);
-        println("set evaluation cubedecision eval plies " + cubedecply);
+        println("set evaluation chequer evaluation prune on");
+        println("set evaluation cubedecision evaluation prune on");
 
-        for(int i = 0; i < 10; i++) {
-            server.printDebug("Setting movefilter: " + server.prefs.getMoveFilter(i));
-            println("set evaluation movefilter " + server.prefs.getMoveFilter(i) );
-            println("set rollout player 0 movefilter " + server.prefs.getMoveFilter(i));
-            //-println("set rollout chequerplay movefilter " + server.prefs.getMoveFilter(i));
-            //-println("set movefilter " + server.prefs.getMoveFilter(i));
+        for (int i = 0; i < 10; i++) {
+            println("set evaluation movefilter " + server.prefs.getMoveFilter(i));
         }
 
-        println("set rollout chequer plies " + checkquerply);
-        println("set rollout cubedecision plies " + cubedecply);
-        if(server.prefs.getMaxml() == 1) {
+        println("set rollout chequerplay plies " + chequerPlayPly);
+        println("set rollout cubedecision plies " + cubeDecisionPly);
+
+        println("set rollout truncation cubedecision prune on");
+        println("set rollout truncation chequerplay prune on");
+        println("set rollout chequerplay prune on");
+        println("set rollout cubedecision prune on");
+
+        for (int i = 0; i < 10; i++) {
+            println("set rollout player 0 movefilter " + server.prefs.getMoveFilter(i));
+        }
+
+        Match m = server.getMatch();
+        if(m != null && m.getMl() == 1) {
             println("set evaluation chequer eval cubeful off");
             println("set evaluation cubedecision eval cubeful off");
             println("set rollout chequerplay cubeful off");
             println("set rollout cubedecision cubeful off");
         }
-
 
         printer.printLine("");
         println("show evaluation");
@@ -212,7 +220,7 @@ public class BGRunner  {
             return;
         }
 
-        GnubgCommand r = new GnubgCommand(server, sIn, sOut, matchPrinter, eqPrinter, lineIn.trim(), isEvalCmd());
+        GnubgCommand r = new GnubgCommand(server, sIn, sOut, matchPrinter, eqPrinter, lineIn.trim(), isEvalCmd(), server.debug);
 
         // Process evalcmd synchronously (in the same thread) because these equities are used
         // to decide resignation later in the same invocation of FibsRunner.processGamePlay().

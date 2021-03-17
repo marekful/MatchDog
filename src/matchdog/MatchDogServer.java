@@ -1,5 +1,6 @@
 package matchdog;
 
+import matchdog.fibsboard.FibsBoard;
 import sun.misc.Signal;
 
 import java.util.HashMap;
@@ -19,10 +20,19 @@ public class MatchDogServer {
 	boolean listenLocal = true;
 
 	public static void main(String [] args) {
-		new MatchDogServer(args);
+
+
+
+	    new MatchDogServer(args);
 	}
+
+	private void fibsBoardToASCII(String board) {
+
+    }
 	
 	MatchDogServer(String [] args) {
+
+
 
         prefs = new HashMap<String, String>();
 		players = new HashMap<Integer, PlayerPrefs>();
@@ -121,7 +131,10 @@ public class MatchDogServer {
         }
 
         public void acceptNewConnection() {
-            (new Thread(new ConnectionHandle(), matchdog.getPlayerName() + "-extconn-" + (++externalConnections))).start();
+            (new Thread(
+                new ConnectionHandle(),
+                matchdog.getPlayerName() + "-sock-" + (++externalConnections)
+            )).start();
         }
 
         private class ConnectionHandle implements Runnable {
@@ -137,16 +150,17 @@ public class MatchDogServer {
                     matchdog.socketServerPrinter
                             .printLine(">>> Connection from " + clientSocket.getRemoteSocketAddress());
 
+                    // allow next connection
                     acceptNewConnection();
 
                     greet(clientSocket.getOutputStream());
 
                     matchdog.listen(
-                            clientSocket.getInputStream(),
-                            new PrintStream(clientSocket.getOutputStream())
+                        clientSocket.getInputStream(),
+                        new PrintStream(clientSocket.getOutputStream())
                     );
                     matchdog.socketServerPrinter.printLine(
-                            ">>> Connection from " + clientSocket.getRemoteSocketAddress() + " closed"
+                        ">>> Connection from " + clientSocket.getRemoteSocketAddress() + " closed"
                     );
 
                 } catch (Exception e) {

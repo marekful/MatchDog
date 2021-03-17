@@ -714,7 +714,7 @@ public class FibsRunner extends Thread {
 					if(server.prefs.getMaxml() == 1) {
 						sleepFibs(750);
 						server.fibsout.println("tell " + opp
-								+ " I play only 1-pointers.");
+								+ " I play only 1-pointers. Try MatchDog");
 					} else {
 						server.fibsout.println("tell " + opp
 							+ " I play matches up to "
@@ -1682,13 +1682,22 @@ public class FibsRunner extends Thread {
 								+ match.getMl() + " score: " + inputBoard.getMyScore()
 								+ " " + inputBoard.getOppScore() + " crawford: "
 								+ match.isCrawford() + " postCrawford: " + match.isPostcrawford()
-								+ (match.getCrawfordscore() > -1 ? "crawford-score: " + match.getCrawfordscore() : "")
+								+ (match.getCrawfordscore() > -1 ? " crawford-score: " + match.getCrawfordscore() : "")
 								+ "]");
 
-						//String _eqBrd = getEquitiesBoard(lastBoard);
-						//server.bgRunner.execBoard(_eqBrd);
+						//-//server.bgRunner.execBoard(in);
 
-						server.bgRunner.execBoard(in);
+
+						FibsBoard rollBoard = new FibsBoard(in);
+						if (rollBoard.getDirection() == 1) {
+							server.printDebug("REVERSING direction for roll-board");
+							server.printDebug("  orig: " + in);
+							rollBoard.setDirection(-1);
+							server.printDebug("revved: " + rollBoard.toString());
+						}
+						server.bgRunner.execBoard(rollBoard.toString());
+
+
 
 					} else {
 						server.printDebug("NOT sending. [candouble: "
@@ -1696,7 +1705,7 @@ public class FibsRunner extends Thread {
 								+ " ml: " + match.getMl() + " score: "
 								+ inputBoard.getMyScore() + " " + inputBoard.getOppScore()
 								+ " crawford: " + match.isCrawford() + " postCrawford: " + match.isPostcrawford()
-								+ (match.getCrawfordscore() > -1 ? "crawford-score: " + match.getCrawfordscore() : "")
+								+ (match.getCrawfordscore() > -1 ? " crawford-score: " + match.getCrawfordscore() : "")
 								+ "]");
 					}
 
@@ -1737,14 +1746,39 @@ public class FibsRunner extends Thread {
 					server.printDebug("got OPP double board, sending to bgsocket");
 					wOppDoubleBoard = false;
 
+
 					//-//server.bgRunner.execBoard(in);
 
-					server.printDebug("OPP double board origi: " + in);
+					/*
+					 * There has been a fair amount of confusion about
+					 * when to swap sides mid-game before doing an eval
+					 * or rollout. Examining gnubg sources and looking at
+					 * how many times and from where swapSides() is called
+					 * and on what conditions and how these change between
+					 * different revisions reveals some insight into this.
+					 * See also https://savannah.gnu.org/bugs/?36485
+					 *
+					 * With gnubg version 1.06.002 (as compared to 1.05.002),
+					 * I observed incorrect responses to opp's double which were
+					 * consistent with a swapped side board command.
+					 * This is a largely untested fix attempt based on a
+					 * handful of observations and the output of the Perl
+					 * test script on the Savannah page (which strangely
+					 * produces the same errors for both tested versions
+					 * so I wonder what was fixed when... :))
+					 *
+					 * Anyways, gnubg "internally" obviously always handles this
+					 * correctly, the problem only surfaces when input is via
+					 * the external interface (i.e. fibsboard).
+					 *
+					 * */
 					FibsBoard dblBoard = new FibsBoard(in);
 					if (dblBoard.getDirection() == 1) {
+						server.printDebug("REVERSING direction for double-board");
+						server.printDebug("  orig: " + in);
 						dblBoard.setDirection(-1);
+						server.printDebug("revved: " + dblBoard.toString());
 					}
-					server.printDebug("OPP double board dirrev: " + dblBoard.toString());
 					server.bgRunner.execBoard(dblBoard.toString());
 				}
 			}
@@ -1760,8 +1794,6 @@ public class FibsRunner extends Thread {
 		server.printDebug("startMatch, old fibsmode:" + server.getFibsMode());
 	
 		server.stopInviter();
-
-		server.bgRunner.startGnubg();
 	
 		String[] arr0, arr1, arr2;
 		String oppname = "", mlstr = "0";
@@ -1811,6 +1843,8 @@ public class FibsRunner extends Thread {
 			this.match = new Match(server, oppname, ml);
 			server.matchCount++;
 			server.setFibsMode(2);
+
+			server.bgRunner.startGnubg();
 
 			//while (!server.bgsocket.run) {}
 	
