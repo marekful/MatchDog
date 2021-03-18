@@ -117,11 +117,16 @@ public class BGRunner  {
         }
 
         Match m = server.getMatch();
-        if(m != null && m.getMl() == 1) {
+        if (m != null && m.getMl() == 1) {
             println("set evaluation chequer eval cubeful off");
             println("set evaluation cubedecision eval cubeful off");
             println("set rollout chequerplay cubeful off");
             println("set rollout cubedecision cubeful off");
+        }
+
+        if (server.prefs.getNoise() > 0.0) {
+            println("set rollout chequerplay noise noise " + server.prefs.getNoise());
+            println("set rollout chequerplay deterministic on");
         }
 
         printer.printLine("");

@@ -59,7 +59,7 @@ public class GnubgCommand implements Runnable {
 
         String rawReply = "", fibsCommand, unit = "";
         long replytime;
-        double replydiff = 0;
+        double replyDiff = 0;
 
         sendCommand();
 
@@ -69,8 +69,8 @@ public class GnubgCommand implements Runnable {
 
                 rawReply = input.readLine();
 
-                if((replydiff = (System.nanoTime() - replytime) / 1000000000.0) < 0.001) {
-                    replydiff *= 1000;
+                if((replyDiff = (System.nanoTime() - replytime) / 1000000000.0) < 0.001) {
+                    replyDiff *= 1000;
                     unit = " ms";
                 } else {
                     unit = " seconds";
@@ -118,7 +118,7 @@ public class GnubgCommand implements Runnable {
         }
 
         if(isEvalcmd) {
-            printer.printLine("reply (in " + replydiff + unit + "): ");
+            printer.printLine("reply (in " + String.format("%.3f", replyDiff) + unit + "): ");
             String [] eqLabel = {"W ", "W(g) ", "W(bg) ", "L(g) ", "L(bg) ", "Cubeless "};
             String eqStr = "";
             int c = 0; String value;
@@ -143,7 +143,7 @@ public class GnubgCommand implements Runnable {
                 return;
             }
 
-            printer.printLine("gnubg says (in " + replydiff + unit + "): " + rawReply);
+            printer.printLine("gnubg says (in " + String.format("%.3f", replyDiff) + unit + "): " + rawReply);
 
             fibsCommand = processReply(rawReply);
 

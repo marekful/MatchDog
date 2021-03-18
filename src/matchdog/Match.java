@@ -1,6 +1,8 @@
 package matchdog;
 
 import jcons.src.com.meyling.console.UnixConsole;
+import matchdog.fibsboard.Dice;
+import matchdog.fibsboard.FibsBoard;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -15,17 +17,21 @@ public class Match {
 	int ml;
 	int [] score = {0,0};
 	int [] dice = {0,0};
+	Dice myDice;
+	Dice oppDice;
 	boolean ingame, shiftmove, oppgreeted, crawford, dropped, postcrawford, wasResumed;
 	int oppgreetphase;
 	int gameno;
 	int [] turn = {0, 0}; // 1,0 if my turn, 0,1 if opp's, 0,0 if no one's.
 	int cube;
+	int cubeOwner; // 0 no one, -1 me, 1 opp
 	int round, roundsave;
 	HashMap<Integer, Integer> roundspergames;
 	HashMap<Integer, String> scorehistory;
 	HashMap<Integer, Long> timehistory;
 	Date start;
 	int crawfordscore;
+	int crawfordGame;
 	String waitfor, finalscore;
 	Date droppedat, mystamp, oppstamp;
 	Timer stamptimer, waitfortimer;
@@ -49,6 +55,7 @@ public class Match {
 		ingame = false;
 		shiftmove = false;
 		cube = 1;
+		cubeOwner = 0;
 		round = 0;	
 		start = new Date();
 		gametime = start.getTime();
@@ -57,6 +64,7 @@ public class Match {
 		crawford = false;
 		dropped = false;
 		crawfordscore = -1;
+		crawfordGame = -1;
 		droppedat = null;
 		mystamp = null;
 		oppstamp = null;
@@ -214,6 +222,22 @@ public class Match {
 		return dice;
 	}
 
+	public Dice getMyDice() {
+		return myDice;
+	}
+
+	public void setMyDice(Dice myDice) {
+		this.myDice = myDice;
+	}
+
+	public Dice getOppDice() {
+		return oppDice;
+	}
+
+	public void setOppDice(Dice oppDice) {
+		this.oppDice = oppDice;
+	}
+
 	public void setDice(int[] dice) {
 		this.dice = dice;
 	}
@@ -233,7 +257,19 @@ public class Match {
 	public void setCube(int cube) {
 		this.cube = cube;
 	}
-	
+
+	public boolean iCanDouble() {
+		return ml > 1 && !oneToWin() && (cubeOwner == 0 || cubeOwner == -1);
+	}
+
+	public boolean oppCanDouble() {
+		return ml > 1 && !oneToWin() && (cubeOwner == 0 || cubeOwner == 1);
+	}
+
+	public void setCubeOwner(int cubeOwner) {
+		this.cubeOwner = cubeOwner;
+	}
+
 	public int getRound() {
 		return round;
 	}
@@ -313,6 +349,14 @@ public class Match {
 
 	public void setCrawfordscore(int crawfordscore) {
 		this.crawfordscore = crawfordscore;
+	}
+
+	public int getCrawfordGame() {
+		return crawfordGame;
+	}
+
+	public void setCrawfordGame(int crawfordGame) {
+		this.crawfordGame = crawfordGame;
 	}
 
 	public boolean isDropped() {
@@ -425,16 +469,16 @@ public class Match {
 	}
 
 	public String matchInfo() {
-		return UnixConsole.BLACK + UnixConsole.BACKGROUND_WHITE
-				+ "[ turn: " + turn[0] + " " + turn[1] + " | round: "
+		return  "[ turn: " + turn[0] + " " + turn[1] + " | round: "
 				+ getRound() + " | game: " + getGameno() + " | cube: "
-				+ getCube() + " | ml: " + getMl() + " | score: "
-				+ score[0] + " " + score[1] + " | time: "
-				+ getTotalTime() / 1000 / 60 + ":"
-				+ (getTotalTime() / 1000 - getTotalTime() / 1000 / 60 * 60)
+				+ (iCanDouble() ? "*" : "") + getCube() + (oppCanDouble() ? "*" : "")
+				+ " | ml: " + getMl() + " | score: " + score[0] + " " + score[1] + " | time: "
+				+ (getTotalTime() / 1000 / 60 < 10 ? "0" : "") + (getTotalTime() / 1000 / 60) + ":"
+				+ (getTotalTime() / 1000 - getTotalTime() / 1000 / 60 * 60 < 10 ? "0" : "") +
+				       (getTotalTime() / 1000 - getTotalTime() / 1000 / 60 * 60)
 				+ (crawford ? " | crawford" : "") + (postcrawford ? " | post-crawford" : "")
-				+ (getCrawfordscore() > -1 ? " @: " + getCrawfordscore() : "")
-				+ " ]" + UnixConsole.RESET;
+				+ (getCrawfordGame() > -1 ? " (#" + getCrawfordGame() + " @" + getCrawfordscore() + ")" : "")
+				+ " ]";
 	}
 
 	private void initChatTexts() {

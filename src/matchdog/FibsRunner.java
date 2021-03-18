@@ -5,6 +5,8 @@ import jcons.src.com.meyling.console.UnixConsole;
 import matchdog.console.printer.FibsPrinter;
 import matchdog.console.printer.FibsCommandPrinter;
 import matchdog.console.printer.MatchInfoPrinter;
+import matchdog.console.printer.AsciiBoardPrinter;
+import matchdog.console.printer.ConsoleColorPrinter;
 import matchdog.fibsboard.FibsBoard;
 
 import java.io.*;
@@ -13,6 +15,9 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class FibsRunner extends Thread {
 
@@ -24,6 +29,8 @@ public class FibsRunner extends Thread {
 	static final int timoutSeconds = 90;
 	static final String FIBSMSG_WAVES_GOODBYE = "waves goodbye";
     static final Object lock = new Object();
+
+    static final Pattern toggleLine = Pattern.compile("^([a-z]+)\\s+(YES|NO)\\s*$");
 	
 	int id;
 
@@ -33,9 +40,8 @@ public class FibsRunner extends Thread {
 	boolean init, run, loggedIn, dead, outOK, resendlastboard;
 
 	// used in processGamePlay
-	boolean wOppMoveBoard, wOppDoubleBoard, wRollBoard, wMoveBoard, wResumeBoard;
-	boolean ownDoubleInProgress, wScoreBoard, resume, wasResumed;
-
+	boolean wOppMoveBoard, wOppDoubleBoard, wOppRollBoard, wRollBoard, wMoveBoard, wResumeBoard;
+	boolean ownDoubleInProgress, wScoreBoard, wToggle, resume, wasResumed;
 
 	// Fibs message types from 1 to 20 (0 doesn't count) to process 
 	// (and print to console) during game play. 
@@ -55,6 +61,7 @@ public class FibsRunner extends Thread {
 	FibsPrinter linePrinter;
 	MatchInfoPrinter matchInfoPrinter;
 	FibsCommandPrinter fibsCommandPrinter;
+	AsciiBoardPrinter boardPrinter;
 	Match match, lastmatch;
 	String lastboard, filteredInput;
 	boolean processNextLine, terminating;
@@ -96,7 +103,10 @@ public class FibsRunner extends Thread {
 	// For tor login filtering
 	String user;
 	//TorExitNodeChecker torcheck = new TorExitNodeChecker();
-	
+
+	HashMap<String, Boolean> toggleTo;
+	int toggleSetCount;
+
 	long lastLine;
 	
 	FibsRunner(MatchDog server, String host, int port, int id) {
@@ -109,6 +119,7 @@ public class FibsRunner extends Thread {
 		terminatedAt = null;
 		wOppMoveBoard = false;
 		wOppDoubleBoard = false;
+		wOppRollBoard = false;
 		wRollBoard = false;
 		wResumeBoard = false;
 		wMoveBoard = false;
@@ -116,6 +127,7 @@ public class FibsRunner extends Thread {
 		resume = false;
 		wasResumed = false;
 		wScoreBoard = false; // ? not in use
+		wToggle = false;
 		this.host = host;
 		this.port = port;
 		this.server = server;
@@ -144,7 +156,27 @@ public class FibsRunner extends Thread {
 		
 		doubledInRound = 0;
         torMonitorMode = server.prefs.getGnuBgPort() == 0;
-		
+
+		toggleSetCount = 0;
+        toggleTo = new HashMap<>();
+		toggleTo.put("allowpip", false);
+		toggleTo.put("autoboard", true);
+		toggleTo.put("autodouble", false);
+		toggleTo.put("automove", false);
+		toggleTo.put("bell", false);
+		toggleTo.put("crawford", true);
+		toggleTo.put("double", false);
+		toggleTo.put("greedy", false);
+		toggleTo.put("moreboards", true);
+		toggleTo.put("moves", false);
+		toggleTo.put("notify", true);
+		toggleTo.put("ratings", true);
+		toggleTo.put("ready", true);
+		toggleTo.put("report", true);
+		toggleTo.put("silent", false);
+		toggleTo.put("telnet", true);
+		toggleTo.put("wrap", false);
+
 		//final String pid = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
 		setName("FibsRunner-" + this.id);
 
@@ -158,6 +190,10 @@ public class FibsRunner extends Thread {
 
 		fibsCommandPrinter = new FibsCommandPrinter(
 			server, "", UnixConsole.BLACK, UnixConsole.BACKGROUND_YELLOW
+		);
+
+		boardPrinter = new AsciiBoardPrinter(
+            server, "", ConsoleColorPrinter.DEFAULT_COLOR, ConsoleColorPrinter.DEFAULT_BGCOLOR
 		);
 	}
 
@@ -245,6 +281,40 @@ public class FibsRunner extends Thread {
         }
 	}
 
+	private void ensureToggleSettings(String in) {
+
+		if (!wToggle) {
+			server.fibsout.println("toggle");
+			sleepFibs(150);
+			wToggle = true;
+		} else {
+			Matcher m = toggleLine.matcher(in);
+			if (m.matches()) {
+				if (   (m.group(2).equals("YES") && !toggleTo.get(m.group(1)))
+				    || (m.group(2).equals("NO") && toggleTo.get(m.group(1))))
+				{
+					server.fibsout.println("tog " + m.group(1));
+					sleepFibs(110);
+				}
+
+				if (++toggleSetCount == 17) {
+					wToggle = false;
+					server.fibsout.println("set boardstyle 3");
+					sleepFibs(150);
+
+					if (server.prefs.getEmail() != null) {
+						server.fibsout.println("address " + server.prefs.getEmail());
+						sleepFibs(150);
+					}
+					server.printer.printLine("Ensure toggle finished");
+
+					getSavedMatches();
+				}
+			}
+		}
+
+	}
+
 	private synchronized void processInput(String in) {
 	
 		if(in.equals("6")) {
@@ -304,6 +374,11 @@ public class FibsRunner extends Thread {
 			if(init) {
 				return;
 			}
+		}
+
+		// Toggle settings
+		if (wToggle) {
+			ensureToggleSettings(in);
 		}
 		
 		// filter fibs output line for
@@ -376,7 +451,10 @@ public class FibsRunner extends Thread {
 				
 				login();
 				sleepFibs(400);
-				getSavedMatches();
+
+				ensureToggleSettings("");
+
+				//getSavedMatches();
 			}
 		}
 		//// END:LOGIN
@@ -1471,6 +1549,7 @@ public class FibsRunner extends Thread {
 							&& !(wasResumed && inputBoard.didCrawford())) {
 						match.setCrawford(true);
 						match.setCrawfordscore(match.getScore()[0]);
+						match.setCrawfordGame(match.getGameno());
 						server.printDebug("setting CRAWFORD");
 					} else if (match.getScore()[0] > match.getCrawfordscore()
 							&& match.isCrawford()) {
@@ -1519,6 +1598,7 @@ public class FibsRunner extends Thread {
 					wRollBoard = false;
 					//-//setDirection(in);
 					match.setShiftmove(inputBoard.getDirection() == 1); //-
+					match.setMyDice(inputBoard.getMyDice());
 
 					//// GET EQUITITES
 					server.bgRunner.execEval(in);
@@ -1577,7 +1657,10 @@ public class FibsRunner extends Thread {
 					match.setTurn(new int[] { 0, 1 });
 					match.setRound(match.getRound() + 1);
 
-                    server.printer.printLine("\n *** OPP's turn ***\n", "");
+                    //server.printer.printLine("\n *** OPP's turn ***\n", "");
+					if (inputHasBoard) {
+						boardPrinter.printBoard(inputGetBoard(in));
+					}
                     printMatchInfo();
 				}
 
@@ -1600,6 +1683,7 @@ public class FibsRunner extends Thread {
 						//printMatchInfo();
 
 						match.setCube(match.getCube() * 2);
+						match.setCubeOwner(-1);
 						doubledInRound = match.getRound();
 					}
 
@@ -1640,7 +1724,8 @@ public class FibsRunner extends Thread {
                         match.setTurn(new int[] { 1, 0 });
                         match.setRound(match.getRound() + 1);
 
-                        server.printer.printLine("\n *** My turn ***\n", "");
+                        //server.printer.printLine("\n *** My turn ***\n", "");
+						boardPrinter.printBoard(lastBoard);
                         printMatchInfo();
 
 						return;
@@ -1649,6 +1734,17 @@ public class FibsRunner extends Thread {
 					return;
 				}
 
+				//-> This is only needed for the ASCII board
+				else if (in.startsWith(match.getPlayer1() + " rolls ")) {
+					wOppRollBoard = true;
+					return;
+				}
+				else if (inputHasBoard && wOppRollBoard) {
+					wOppRollBoard = false;
+					match.setOppDice(inputBoard.getOppDice());
+				}
+				//<-
+
 				if (inputHasBoard && wOppMoveBoard) {
 
                     server.printDebug("got OPP move board...");
@@ -1656,14 +1752,6 @@ public class FibsRunner extends Thread {
 					match.setTurn(new int[] { 1, 0 });
 					match.setRound(match.getRound() + 1);
 
-					/*if(match.isPostcrawford() && canDouble(in)[0]
-					               && match.getRound() == 1) {
-						//match.setPostcrawford(false);
-						server.printDebug("POSTCRAWFORD DOUBLING");
-						sleepFibs(100);
-						server.fibsout.println("double");
-					
-					} else */
 					// post crawford auto double
 					if(match.isPostcrawford() && inputBoard.iMayDouble() && !match.oneToWin()
 							   /* I double in round 2 when opp started game, in round 3 when I did */
@@ -1681,21 +1769,22 @@ public class FibsRunner extends Thread {
 								+ " " + inputBoard.oppMayDouble() + " ml: "
 								+ match.getMl() + " score: " + inputBoard.getMyScore()
 								+ " " + inputBoard.getOppScore() + " crawford: "
-								+ match.isCrawford() + " postCrawford: " + match.isPostcrawford()
+								+ match.isCrawford() + " post-crawford: " + match.isPostcrawford()
+								+ " was crawford: " + (match.getCrawfordscore() > -1 ? "true" : "false")
 								+ (match.getCrawfordscore() > -1 ? " crawford-score: " + match.getCrawfordscore() : "")
 								+ "]");
 
-						//-//server.bgRunner.execBoard(in);
+						server.bgRunner.execBoard(in);
 
-
-						FibsBoard rollBoard = new FibsBoard(in);
+						/*FibsBoard rollBoard = new FibsBoard(in);
+						server.printDebug("is SHIFT move: " + match.isShiftmove());
 						if (rollBoard.getDirection() == 1) {
 							server.printDebug("REVERSING direction for roll-board");
 							server.printDebug("  orig: " + in);
 							rollBoard.setDirection(-1);
 							server.printDebug("revved: " + rollBoard.toString());
 						}
-						server.bgRunner.execBoard(rollBoard.toString());
+						server.bgRunner.execBoard(rollBoard.toString());*/
 
 
 
@@ -1709,7 +1798,8 @@ public class FibsRunner extends Thread {
 								+ "]");
 					}
 
-                    server.printer.printLine("\n *** My turn ***\n", "");
+                    //server.printer.printLine("\n *** My turn ***\n", "");
+					boardPrinter.printBoard(inputGetBoard(in));
                     printMatchInfo();
 
 					return;
@@ -1730,9 +1820,11 @@ public class FibsRunner extends Thread {
 					if(match.getRound() > doubledInRound) {
 						server.printDebug("OPP's double accepted");
 						match.setCube(match.getCube() * 2);
+						match.setCubeOwner(1);
 						doubledInRound = match.getRound();
 
-                        server.printer.printLine("\n *** OPP's turn ***\n", "");
+                        //server.printer.printLine("\n *** OPP's turn ***\n", "");
+						boardPrinter.printBoard(lastBoard);
                         printMatchInfo();
 
 						return;
@@ -1740,7 +1832,8 @@ public class FibsRunner extends Thread {
 				}
 				if (inputHasBoard && wOppDoubleBoard) {
 
-                    server.printer.printLine("\n *** My turn ***\n", "");
+                    //server.printer.printLine("\n *** My turn ***\n", "");
+					boardPrinter.printBoard(inputGetBoard(in));
                     printMatchInfo();
 
 					server.printDebug("got OPP double board, sending to bgsocket");
@@ -1773,6 +1866,7 @@ public class FibsRunner extends Thread {
 					 *
 					 * */
 					FibsBoard dblBoard = new FibsBoard(in);
+					server.printDebug("is SHIFT move: " + match.isShiftmove());
 					if (dblBoard.getDirection() == 1) {
 						server.printDebug("REVERSING direction for double-board");
 						server.printDebug("  orig: " + in);

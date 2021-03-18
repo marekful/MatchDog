@@ -1,5 +1,6 @@
 package matchdog.console.printer;
 
+import jcons.src.com.meyling.console.UnixConsole;
 import matchdog.MatchDog;
 import matchdog.PrintableStreamSource;
 
@@ -28,6 +29,9 @@ public class MatchInfoPrinter extends BufferedConsolePrinter {
             return;
         }
 
-        printLine(dog.getMatch().matchInfo());
+        printLine(
+            UnixConsole.BLACK + UnixConsole.BACKGROUND_WHITE +
+            dog.getMatch().matchInfo() + UnixConsole.RESET
+        );
     }
 }

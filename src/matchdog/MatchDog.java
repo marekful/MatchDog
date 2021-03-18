@@ -192,6 +192,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                 unSuspendOutput(out);
             }
             if (inMatchDogShell(out)) {
+                out.println("\nLeaving MatchDog Shell");
                 leaveShell(out);
             } else {
                 systemPrinter.printLine("Got signal " + signal);
@@ -263,6 +264,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                 if (line.length() == 1) {
                     // exit shell
                     if (line.charAt(0) == 27) {
+                        out.println("Leaving MatchDog Shell");
                         leaveShell(out);
                         continue;
                     }
@@ -701,6 +703,11 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 
 	protected ArrayList<BufferedConsolePrinter> getPrinters() {
         ArrayList<BufferedConsolePrinter> p = new ArrayList<>();
+
+	    if (fibs.terminating) {
+	        return p;
+        }
+
         p.add(systemPrinter);
         p.add(socketServerPrinter);
         p.add(printer);
@@ -709,6 +716,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
         p.add(bgRunner.eqPrinter);
         p.add(fibs.matchInfoPrinter);
         p.add(fibs.fibsCommandPrinter);
+        p.add(fibs.boardPrinter);
         p.add(fibs.linePrinter);
 
         return p;

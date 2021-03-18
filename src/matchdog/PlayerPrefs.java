@@ -10,7 +10,7 @@ import java.util.Properties;
 class PlayerPrefs extends Prefs {
 
 	public Properties props;
-	public String username, password;
+	public String username, password, email;
 	public boolean autologin, autoinvite, autojoin, autoinvitesaved, autojoinsaved;
 	public int maxml, checkquerply, cubedecply, expdivider, replimit, replaytimeout;
     public int gnubgextport, listenerport;
@@ -67,6 +67,14 @@ class PlayerPrefs extends Prefs {
 
 	public void setPassword(String password) {
 		this.password = password;
+	}
+
+	public String getEmail() {
+		return email;
+	}
+
+	public void setEmail(String email) {
+		this.email = email;
 	}
 
 	public boolean isAutologin() {
