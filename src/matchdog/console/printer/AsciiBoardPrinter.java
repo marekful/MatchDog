@@ -22,7 +22,7 @@ public class AsciiBoardPrinter extends MatchInfoPrinter {
 
     private String readAsciiTemplate() {
         try {
-            return Files.readString(new File("../config/asciiboard.txt").toPath(), StandardCharsets.US_ASCII);
+            return Files.readString(new File("../config/asciiboard2.txt").toPath(), StandardCharsets.US_ASCII);
         } catch (IOException ignore) {
             return "";
         }
@@ -49,11 +49,28 @@ public class AsciiBoardPrinter extends MatchInfoPrinter {
 
             .replaceAll("\\*", m.isMyTurn() ? "^" : "⌄");
 
+        int c = 0;
+        String l1 = "", l2 = "";
         for (int i = 1; i < 25; i++) {
-            asciiBoard = asciiBoard.replace(
-                    (i < 10 ? "0" : "" ) + i,
-                (state[i].length() == 1 ? " " : "") + state[i]
-            );
+            try {
+                c = Integer.parseInt(state[i]);
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+            }
+
+            if (c < 0) {
+                l1 = (c > -10 ? " " : "" ) + "x";
+                l2 = (c > -10 ? " " : "" ) + (c == -2 ? "x" : (Math.abs(c)));
+            } else if (c > 0) {
+                l1 = (c < 10 ? " " : "" ) + "o";
+                l2 = (c < 10 ? " " : "" ) + (c == 2 ? "o" : c);
+            } else {
+                l1 = " .";
+                l2 = "  ";
+            }
+
+            asciiBoard = asciiBoard.replace((i < 10 ? "0" : "" ) + i, l1);
+            asciiBoard = asciiBoard.replace("" + (i + 30), l2);
         }
 
         return asciiBoard;
