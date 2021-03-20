@@ -1,0 +1,7 @@
+.idea/
+MatchDog.iml
+bin/
+data/
+
+out/
+config/*.pprefs
