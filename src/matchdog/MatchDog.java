@@ -47,7 +47,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 	
 	Timer keepaliveTimer;
 	TimerTask keepaliveTimerTask;
-	HashMap<Integer, PrintStream> listeners ;
+	HashMap<Integer, PrintStream> connectionListeners;
 	HashMap<PrintStream, Boolean> inMatchDogShell;
 	
 	protected int fibsMode;
@@ -97,7 +97,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 		outputName = "";
 		serverStartedAt = new Date();
 
-        listeners = new HashMap<Integer, PrintStream>();
+        connectionListeners = new HashMap<Integer, PrintStream>();
         inMatchDogShell = new HashMap<PrintStream, Boolean>();
 
         // global blacklist
@@ -117,7 +117,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
         debug.put("printGnubgCommand", false);
 
         if(listenLocal) {
-            listeners.put(0, System.out);
+            connectionListeners.put(0, System.out);
         }
 
         pid = Long.parseLong(java.lang.management.ManagementFactory.getRuntimeMXBean().getName().split("@")[0]);
@@ -191,7 +191,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 		boolean exit = true;
         contd = false;
         welcome = true;
-		int listenerId = listeners.size();
+		int listenerId = connectionListeners.size();
 
 		/*
 		* Add SIGINT handler for each listener - stdin and/or socket connection(s)
@@ -214,7 +214,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 		BufferedReader input = new BufferedReader(new InputStreamReader(in));
 
         if(!out.equals(System.out)) {
-			listeners.put(listenerId, out);
+			connectionListeners.put(listenerId, out);
 		}
 
         try {
@@ -317,7 +317,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                 } else if (line.split(" ")[0].equals("200")) {
                     String host = line.split(" ")[1];
                     printer.printLine("TOR CHECHK [" + host + "] result: "
-                            + TorExitNodeChecker.isTorExitNode(host));;
+                            + TorExitNodeChecker.isTorExitNode(host));
                     continue;
                 } else if (line.equals("166")) {
                     removePlayerStat("marekful");
@@ -348,13 +348,13 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                     leaveShell(out);
                     continue;
                 } else if (line.equals("31")) {
-                    prefs.setAutoinvite((prefs.isAutoinvite()) ? false : true);
+                    prefs.setAutoinvite(!prefs.isAutoinvite());
                     out.print("autoinvite is now: " + prefs.isAutoinvite());
                     out.println();
                     leaveShell(out);
                     continue;
                 } else if (line.equals("32")) {
-                    prefs.setAutojoin((prefs.isAutojoin()) ? false : true);
+                    prefs.setAutojoin(!prefs.isAutojoin());
                     out.print("autojoin is now: " + prefs.isAutojoin());
                     out.println();
                     leaveShell(out);
@@ -493,7 +493,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
             stopServer();
 		}
 		if(!out.equals(System.out)) {
-			listeners.remove(listenerId);
+			connectionListeners.remove(listenerId);
             BufferedConsolePrinter.removeOutputBuffer(out);
 		}
 	}
@@ -564,21 +564,21 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 	
 	protected void resendLastBoard() {
 		fibsout.println("b");
-		printer.printLine("Resending last board: " + fibs.lastboard);;
+		printer.printLine("Resending last board: " + fibs.lastboard);
 		fibs.sleepFibs(600);
 		bgRunner.execBoard(fibs.lastboard.trim());
 	}
 
 	protected void initPlayerStats() {
-		printer.printLine("OPENING PlayerStats file...");;
+		printer.printLine("OPENING PlayerStats file...");
 
 		if ((playerstats = openPlayerStats(pstatspath)) != null) {
-			printer.printLine("OK (" + pstatspath + ")");;
+			printer.printLine("OK (" + pstatspath + ")");
             mergePlayerStats();
 		} else {
 			printer.printLine("FAILED, CREATING EMPTY PlayerStats ("
 					+ "will be written when first match stops --> " + pstatspath
-					+ ")");;
+					+ ")");
 			playerstats = new PlayerStats();
 		}
 	}
@@ -591,25 +591,25 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
             return;
         }
 
-        printer.printLine("IMPORTING from .pstat.import file (" + importPath + ")");;
+        printer.printLine("IMPORTING from .pstat.import file (" + importPath + ")");
 
         int mc = 0;
         for(String player : importPs.pstats.keySet()) {
             PlayerStats.PlayerStat ps = importPs.pstats.get(player);
-            printer.printLine(" ** Player: " + player + " history size: " + ps.history.size());;
+            printer.printLine(" ** Player: " + player + " history size: " + ps.history.size());
 
             if(ps.history.size() == 0) continue;
 
             if(playerstats.hasPlayer(player)) {
-                printer.printLine(" ** Appending to existing player");;
+                printer.printLine(" ** Appending to existing player");
             } else {
-                printer.printLine(" ** Player doesn't exist, creating");;
+                printer.printLine(" ** Player doesn't exist, creating");
                 playerstats.cratePlayer(player);
             }
             printer.printLine(" ** Found "
                     + ps.history.size() + " match(es) to import in addition to "
                     + playerstats.getByName(player).history.size()
-                    + " existing match(es)");;
+                    + " existing match(es)");
 
             //playerstats.getByName(player).history.putAll(ps.history);
             printer.printLine("");
@@ -846,7 +846,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 	}
 	
 	public Collection<PrintStream> getPrintStreams() {
-		return listeners.values();
+		return connectionListeners.values();
 	}
 
     public String getConfigDir() {

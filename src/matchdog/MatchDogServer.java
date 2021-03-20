@@ -23,9 +23,6 @@ public class MatchDogServer {
 	boolean listenLocal = true;
 
 	public static void main(String [] args) {
-
-
-
 	    new MatchDogServer(args);
 	}
 	
@@ -70,6 +67,7 @@ public class MatchDogServer {
             getConfigDir(),
             getDataDir()
 		);
+
         (new Thread(g, g.getPlayerName() + "-main")).start();
 		
 		if(g.prefs.getListenerport() > 0) {
