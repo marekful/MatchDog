@@ -5,7 +5,7 @@ import jcons.src.com.meyling.console.UnixConsole;
 import matchdog.console.printer.FibsPrinter;
 import matchdog.console.printer.FibsCommandPrinter;
 import matchdog.console.printer.MatchInfoPrinter;
-import matchdog.console.printer.AsciiBoardPrinter;
+import matchdog.console.printer.Utf8BoardPrinter;
 import matchdog.console.printer.ConsoleColorPrinter;
 import matchdog.fibsboard.FibsBoard;
 
@@ -13,6 +13,7 @@ import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -54,14 +55,14 @@ public class FibsRunner extends Thread {
 	// used when setting resume parameters
 	boolean[] resumeBits = { false, false, false, false };
 
-	int inithelper = 0;
+	int initHelper = 0;
 	String host;
 	int port;
 	MatchDog server;
 	FibsPrinter linePrinter;
 	MatchInfoPrinter matchInfoPrinter;
 	FibsCommandPrinter fibsCommandPrinter;
-	AsciiBoardPrinter boardPrinter;
+	Utf8BoardPrinter boardPrinter;
 	Match match, lastmatch;
 	String lastboard, filteredInput;
 	boolean processNextLine, terminating;
@@ -192,7 +193,7 @@ public class FibsRunner extends Thread {
 			server, "", UnixConsole.BLACK, UnixConsole.BACKGROUND_YELLOW
 		);
 
-		boardPrinter = new AsciiBoardPrinter(
+		boardPrinter = new Utf8BoardPrinter(
             server, "", ConsoleColorPrinter.DEFAULT_COLOR, ConsoleColorPrinter.DEFAULT_BGCOLOR
 		);
 	}
@@ -206,8 +207,8 @@ public class FibsRunner extends Thread {
 		while(!connected) {
 
 			try {	
-				InetAddress fa = InetAddress.getByName("fibs.com");
-				s = new Socket(fa, server.programPrefs.getFibsport());
+				InetAddress fa = InetAddress.getByName(host);
+				s = new Socket(fa, port);
 			} 
 			catch(Exception e) {
                 // retry
@@ -316,7 +317,15 @@ public class FibsRunner extends Thread {
 	}
 
 	private synchronized void processInput(String in) {
-	
+
+		if (in.contains("One account per person only!")) {
+			initHelper++;
+		}
+		if (in.startsWith("You're now watching")) {
+			server.setFibsMode(1);
+		}
+
+		// let through CLIP Who Info empty lines
 		if(in.equals("6")) {
 			in = "6 ";
 		}
@@ -430,8 +439,7 @@ public class FibsRunner extends Thread {
 		}
 	
 		//// LOGIN
-		//("FibsRunner.processInput> >>> inithelper: " + inithelper + " init: " + init);
-		if (inithelper > 0 && !init) {
+		if (initHelper > 0 && !init) {
 	
 			init = true;
 			synchronized (MatchDog.lock) {
@@ -441,6 +449,8 @@ public class FibsRunner extends Thread {
 			if (server.prefs.isAutologin()) {
 				synchronized (lock) {
 					try {
+						// outOK is true when MatchDog has connected
+						// its output writer to our socket
 						while(!outOK) {
 							lock.wait();
 						}
@@ -970,12 +980,7 @@ public class FibsRunner extends Thread {
 				server.fibsout.println("k Hi " + watcher + "!");
 			}
 		}
-		
-		if (in.contains("One account per person only!"))
-			inithelper++;
-		if (in.startsWith("You're now watching"))
-			server.setFibsMode(1);
-	
+
 		// START A MATCH
         if (   in.contains(" has joined you")
             || in.contains("You are now playing")) {
@@ -1118,15 +1123,11 @@ public class FibsRunner extends Thread {
 
 		// / PROCESS INITIAL ROLL ///
 		if (in.startsWith("You rolled ") && match.getRound() == 0) {
-			//server.printDebug("in: " + in);
+
 			server.printDebug("initial roll");
 			String[] arr0 = in.split("You rolled");
-			//server.printDebug("dbg: arr0[0]" + arr0[0]);
-			//server.printDebug("dbg: arr0[1]" + arr0[1]);
 			String[] arr1 = arr0[1].toLowerCase().split(
 					", " + match.getPlayer1().toLowerCase() + " rolled ");
-			//server.printDebug("dbg: arr1[0]" + arr1[0]);
-			//server.printDebug("dbg: arr1[1]" + arr1[1]);
 
 			int d1 = Integer.parseInt(arr1[0].trim());
 			int d2 = Integer.parseInt(arr1[1].trim());
@@ -1148,7 +1149,19 @@ public class FibsRunner extends Thread {
 
 				if (match.getGameno() < 1) {
 					match.setGameno(1);
+
+					match.moveHistory.put(match.getGameno(), new ArrayList<String>());
+					match.moveHistory.get(match.getGameno()).add("set default " + server.getPlayerName() + " " + match.getPlayer1());
+					match.moveHistory.get(match.getGameno()).add("set dice rng manual");
+					match.moveHistory.get(match.getGameno()).add("set player 0 human");
+					match.moveHistory.get(match.getGameno()).add("set player 1 human");
+					match.moveHistory.get(match.getGameno()).add("set automatic roll off");
+					match.moveHistory.get(match.getGameno()).add("set automatic roll off");
+					match.moveHistory.get(match.getGameno()).add("new match " + match.getMl());
 				}
+				match.moveHistory.get(match.getGameno()).add("set turn " + (match.isMyTurn() ? server.getPlayerName() : match.getPlayer1()));
+				match.moveHistory.get(match.getGameno()).add("set dice  " + d1 + " " + d2);
+
 
 				wScoreBoard = true;
 				// server.gnubgout.println("set dice " + d1 + " " + d2);
@@ -1304,6 +1317,11 @@ public class FibsRunner extends Thread {
 
 			match.setRound(0);
 			match.setTurn(new int[] { 0, 0 });
+
+			if (!wasResumed) {
+				match.moveHistory.get(match.getGameno()).add("reject");
+			}
+
 			return;
 		} else if (in.startsWith("You accept and win ")) {
 			//server.printDebug("in: " + in);
@@ -1311,6 +1329,11 @@ public class FibsRunner extends Thread {
 
 			match.setRound(0);
 			match.setTurn(new int[] { 0, 0 });
+
+			if (!wasResumed) {
+				match.moveHistory.get(match.getGameno()).add("accept");
+			}
+
 			return;
 		} else if (in.toLowerCase().contains(
 				match.getPlayer1().toLowerCase() + " wins")
@@ -1329,17 +1352,26 @@ public class FibsRunner extends Thread {
 
 			match.setRound(0);
 			match.setTurn(new int[] { 0, 0 });
+
+			if (!wasResumed) {
+				match.moveHistory.get(match.getGameno()).add("accept");
+			}
+
 			return;
 		}
 		if (in.startsWith(match.getPlayer1() + " gives up.")
 				&& ownDoubleInProgress) {
 			server.printDebug("END GAME - got GIVE UP response to own double");
-			//server.printDebug("got GIVE UP response to own double");
 			printMatchInfo();
 			ownDoubleInProgress = false;
 			match.setIngame(false);
 			match.setRound(0);
 			match.setTurn(new int[] { 0, 0 });
+
+			if (!wasResumed) {
+				match.moveHistory.get(match.getGameno()).add("reject");
+			}
+
 			return;
 		}
 		//// END: END GAME ////
@@ -1381,7 +1413,11 @@ public class FibsRunner extends Thread {
 				
 				match.setGameno(match.getGameno() + 1);
 				match.setPostcrawford(false);
-				
+
+				if (!wasResumed) {
+					match.moveHistory.put(match.getGameno(), new ArrayList<String>());
+				}
+
 				server.fibsout.println("join");
 				server.printDebug("joining next game");
 				server.printDebug("gameno set to: " + match.getGameno());
@@ -1398,6 +1434,11 @@ public class FibsRunner extends Thread {
 			server.printDebug("Resignation rejected by opp");
 			wMoveBoard = true;
 			server.bgRunner.execBoard(lastboard);
+
+			if (!wasResumed) {
+				match.moveHistory.get(match.getGameno()).add("reject");
+			}
+
 			return;
 		}
 		//// END:HANDLE OWN RESIGN REJECTED
@@ -1418,13 +1459,22 @@ public class FibsRunner extends Thread {
 			} catch (Exception e) {
 
 			}
-			
-			
+
+			if (!wasResumed) {
+				int resignLevel = resignpts / lastBoard.getDoublingCube();
+				String resignText = resignLevel == 2 ? "gammon" : (resignLevel == 3 ? "backgammon" : "normal");
+				match.moveHistory.get(match.getGameno()).add("resign " + resignText);
+			}
+
 			// OPP RESIGNATION WINS THE MATCH
 			if (resignpts >= match.getMl() - match.getScore()[0]) {
 				server.printDebug("** RESIGN wins, ACCEPTED [resignpts: " + resignpts + " ml: "
 						+ match.getMl() + "  ]");
 				server.fibsout.println("accept");
+
+				if (!wasResumed) {
+					match.moveHistory.get(match.getGameno()).add("accept");
+				}
 
 				//stopMatch();
 				return;
@@ -1462,6 +1512,11 @@ public class FibsRunner extends Thread {
 							+ match.equities[1] + "]");
 					sleepFibs(200);
 					server.fibsout.println("reject");
+
+					if (!wasResumed) {
+						match.moveHistory.get(match.getGameno()).add("reject");
+					}
+
 					return;
 				}
 				
@@ -1474,6 +1529,11 @@ public class FibsRunner extends Thread {
 					
 					sleepFibs(200);
 					server.fibsout.println("accept");
+
+					if (!wasResumed) {
+						match.moveHistory.get(match.getGameno()).add("accept");
+					}
+
 					return;
 				}					
 			} 
@@ -1489,6 +1549,11 @@ public class FibsRunner extends Thread {
   							+ match.equities[2] + "]");				
 					sleepFibs(250);
 					server.fibsout.println("reject");
+
+					if (!wasResumed) {
+						match.moveHistory.get(match.getGameno()).add("reject");
+					}
+
 					return;
 				}
 
@@ -1501,6 +1566,11 @@ public class FibsRunner extends Thread {
   							+ match.equities[1] + "]");
 					sleepFibs(250);
 					server.fibsout.println("accept");
+
+					if (!wasResumed) {
+						match.moveHistory.get(match.getGameno()).add("accept");
+					}
+
 					return;
 				} 	
 			} 
@@ -1514,6 +1584,11 @@ public class FibsRunner extends Thread {
 						+ match.equities[1] + "]");
 				sleepFibs(250);
 				server.fibsout.println("accept");
+
+				if (!wasResumed) {
+					match.moveHistory.get(match.getGameno()).add("accept");
+				}
+
 				return;
 				
 			}
@@ -1563,8 +1638,8 @@ public class FibsRunner extends Thread {
 					server.printDebug("NOT setting CRAWFORD");
 					// post crawford is active for one game after the crawford game only now
 					match.setPostcrawford(false);
-				}
-			} //// END: CRAWFORD ///
+				} //// END: CRAWFORD ////
+			}  //// END: FIRST ROUND ////
 
 			///// MY TURN ////////////////////
 			if (match.isMyTurn()) {
@@ -1600,6 +1675,10 @@ public class FibsRunner extends Thread {
 					match.setShiftmove(inputBoard.getDirection() == 1); //-
 					match.setMyDice(inputBoard.getMyDice());
 
+					if (!wasResumed && match.getRound() > 1) {
+						match.moveHistory.get(match.getGameno()).add("set dice " + inputBoard.getMyDice().getDie1() + " " + inputBoard.getMyDice().getDie2());
+					}
+
 					//// GET EQUITITES
 					server.bgRunner.execEval(in);
 					
@@ -1611,6 +1690,11 @@ public class FibsRunner extends Thread {
 							match.setOwnResignInProgress(true);
 							sleepFibs(200);
 							server.fibsout.println("resign n");
+
+							if (!wasResumed) {
+								match.moveHistory.get(match.getGameno()).add("resign normal");
+							}
+
 							return;
 						}
 						
@@ -1623,6 +1707,11 @@ public class FibsRunner extends Thread {
 								sleepFibs(200);
 								match.setOwnResignInProgress(true);
 								server.fibsout.println("resign n");
+
+								if (!wasResumed) {
+									match.moveHistory.get(match.getGameno()).add("resign normal");
+								}
+
 								return;
 							}
 						}
@@ -1632,6 +1721,11 @@ public class FibsRunner extends Thread {
 							sleepFibs(200);
 							match.setOwnResignInProgress(true);
 							server.fibsout.println("resign b");
+
+							if (!wasResumed) {
+								match.moveHistory.get(match.getGameno()).add("resign backgammon");
+							}
+
 							return;
 							
 						} else if(match.equities[0] == 0.0 && match.equities[3] > 0.99) {
@@ -1639,6 +1733,11 @@ public class FibsRunner extends Thread {
 							sleepFibs(200);
 							match.setOwnResignInProgress(true);
 							server.fibsout.println("resign g");
+
+							if (!wasResumed) {
+								match.moveHistory.get(match.getGameno()).add("resign gammon");
+							}
+
 							return;
 						}
 					
@@ -1657,6 +1756,10 @@ public class FibsRunner extends Thread {
 					match.setTurn(new int[] { 0, 1 });
 					match.setRound(match.getRound() + 1);
 
+					if (!wasResumed && in.startsWith("You can't move")) {
+						match.moveHistory.get(match.getGameno()).add("set turn " + match.getPlayer1());
+					}
+
                     //server.printer.printLine("\n *** OPP's turn ***\n", "");
 					if (inputHasBoard) {
 						boardPrinter.printBoard(inputGetBoard(in));
@@ -1668,6 +1771,10 @@ public class FibsRunner extends Thread {
 				if (in.startsWith("You double.")) {
 					server.printDebug("got 'You double.'");
 					server.printDebug("turn: " + match.turn[0] + " " + match.turn[1]);
+
+					if (!wasResumed) {
+						match.moveHistory.get(match.getGameno()).add("double");
+					}
 
 					ownDoubleInProgress = true;
 					match.touchStamps();
@@ -1681,6 +1788,10 @@ public class FibsRunner extends Thread {
 						server.printDebug("got ACCEPT response to own double, waiting for roll board");
 						//server.printDebug("");
 						//printMatchInfo();
+
+						if (!wasResumed) {
+							match.moveHistory.get(match.getGameno()).add("accept");
+						}
 
 						match.setCube(match.getCube() * 2);
 						match.setCubeOwner(-1);
@@ -1703,12 +1814,33 @@ public class FibsRunner extends Thread {
 						match.getPlayer1().toLowerCase() + " moves")) {
 					server.printDebug("got 'OPP moves...', waiting for OPP move board");
 
-
                     wOppMoveBoard = true;
+
+                    //--->
+                    String[] oppMoveSplit = in.split(match.getPlayer1() + " moves ");
+                    String move = oppMoveSplit[1].replace(".", "").trim();
+
+                    /*server.printDebug(" >>dir > " + lastBoard.getDirection());
+                    server.printDebug(" >>move > " + move);
+                    server.printDebug(" >>shftd> " + GnubgCommand.shift(move));*/
+
+                    if (/*!match.isShiftmove() && */lastBoard.getDirection() == -1) {
+						move = GnubgCommand.shift(move);
+					}
+                    if (!wasResumed) {
+						match.moveHistory.get(match.getGameno()).add(move);
+					}
+                    //<---
+
+
 					match.touchStamps();
 					return;
 				} else if (in.startsWith(match.getPlayer1() + " can't move")) {
 					server.printDebug("got 'OPP can't move'");
+
+					if (!wasResumed) {
+						match.moveHistory.get(match.getGameno()).add("set turn " + server.getPlayerName());
+					}
 
 					match.touchStamps();
 					if (match.getMl() > 1 && lastBoard.iMayDouble()
@@ -1742,6 +1874,11 @@ public class FibsRunner extends Thread {
 				else if (inputHasBoard && wOppRollBoard) {
 					wOppRollBoard = false;
 					match.setOppDice(inputBoard.getOppDice());
+
+					if (!wasResumed && match.getRound() > 1) {
+						match.moveHistory.get(match.getGameno()).add("set dice " + inputBoard.getOppDice().getDie1() + " " + inputBoard.getOppDice().getDie2());
+					}
+
 				}
 				//<-
 
@@ -1759,6 +1896,9 @@ public class FibsRunner extends Thread {
 						//match.setPostcrawford(false);
 						server.printDebug("POSTCRAWFORD DOUBLING");
 						sleepFibs(100);
+
+						match.moveHistory.get(match.getGameno()).add("double");
+
 						server.fibsout.println("double");
 
 					}
@@ -1810,9 +1950,13 @@ public class FibsRunner extends Thread {
 						match.getPlayer1().toLowerCase() + " doubles.")) {
 					server.printDebug("got OPP doubles, waiting for OPP double board");
 					//printMatchInfo();
-
 					wOppDoubleBoard = true;
 					server.fibsout.println("board");
+
+					if (!wasResumed) {
+						match.moveHistory.get(match.getGameno()).add("double");
+					}
+
 					return;
 				}
 				if (in.startsWith("You accept the double.")) {
@@ -1938,7 +2082,7 @@ public class FibsRunner extends Thread {
 			server.matchCount++;
 			server.setFibsMode(2);
 
-			server.bgRunner.startGnubg();
+			server.bgRunner.startGnubgExternal();
 
 			//while (!server.bgsocket.run) {}
 	
@@ -1963,7 +2107,7 @@ public class FibsRunner extends Thread {
         match.setFinished(true);
         match.purgeStampTimer();
 		
-		sleepFibs(200);
+		sleepFibs(100);
 		server.fibsout.println("toggle r");
 		
 		if (server.getSavedMatches().containsValue(match.getPlayer1()))
@@ -2002,7 +2146,6 @@ public class FibsRunner extends Thread {
 			rounds = match.roundsave;
 			score = match.finalscore;
 			server.printDebug("  > NOT dropped match (round: " + rounds + " score: " + score + star + ")");
-	
 		}
 		
 		// --------> TODO move this code and instances to a method (x 3 occurences now)
@@ -2020,8 +2163,14 @@ public class FibsRunner extends Thread {
 		// update scorehistory
 		match.scorehistory.put(match.getGameno(), score + star);
 		// <-----------
-		
-		
+
+		try {
+			match.writeMoveHistory();
+			match.exportSgf();
+		} catch (IOException | InterruptedException e) {
+			server.printDebug("ERROR: Could not export match");
+		}
+
 		// playerstat
 		if(server.playerstats != null) {
 			
@@ -2050,7 +2199,6 @@ public class FibsRunner extends Thread {
 				server.printDebug("COULDN'T WRITE PlayerStats! (" + server.getPstatspath() + ")");
 			}
 		}
-		
 	
 		if(match != null && match.isDropped())  {
 			lastmatch = match;

@@ -1,5 +1,6 @@
 package matchdog.console.printer;
 
+import jcons.src.com.meyling.console.UnixConsole;
 import matchdog.Match;
 import matchdog.PrintableStreamSource;
 import matchdog.fibsboard.Dice;
@@ -9,13 +10,23 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Map;
 
-public class AsciiBoardPrinter extends MatchInfoPrinter {
+public class Utf8BoardPrinter extends MatchInfoPrinter {
 
     private final String template;
     private FibsBoard board;
 
-    public AsciiBoardPrinter(PrintableStreamSource source, String label, String color, String bgColor) {
+    private final static Map<Integer, String> dieFaces = Map.of(
+            1, "⚀",
+            2, "⚁",
+            3, "⚂",
+            4, "⚃",
+            5, "⚄",
+            6, "⚅"
+    );
+
+    public Utf8BoardPrinter(PrintableStreamSource source, String label, String color, String bgColor) {
         super(source, label, color, bgColor);
         template = readAsciiTemplate();
     }
@@ -39,15 +50,14 @@ public class AsciiBoardPrinter extends MatchInfoPrinter {
             .replace("xb", "x" + state[0].replace("-", ""))
             .replace("ob",  "o" + state[25])
 
-            .replace("d1", " " + (myDice != null && !m.isMyTurn() ? myDice.getDie1() : " "))
-            .replace("d2", " " + (myDice != null && !m.isMyTurn() ? myDice.getDie2() : " "))
-            .replace("d3", " " + (oppDice != null && !m.isOppsTurn() ? oppDice.getDie1() : " "))
-            .replace("d4", " " + (oppDice != null && !m.isOppsTurn() ? oppDice.getDie2() : " "))
+            .replace("pl0", dog.getPlayerName())
+            .replace("pl1", dog.getMatch().getPlayer1())
 
-            .replace("xhh", "x" +board.getIRemovedPieces())
-            .replace("ohh", "o" +board.getOppRemovedPieces())
-
-            .replaceAll("\\*", m.isMyTurn() ? "^" : "⌄");
+            .replace("d1", " " + (myDice != null && !m.isMyTurn() ? dieFaces.get(myDice.getDie1()) : " "))
+            .replace("d2", " " + (myDice != null && !m.isMyTurn() ? dieFaces.get(myDice.getDie2()) : " "))
+            .replace("d3", " " + (oppDice != null && !m.isOppsTurn() ? dieFaces.get(oppDice.getDie1()) : " "))
+            .replace("d4", " " + (oppDice != null && !m.isOppsTurn() ? dieFaces.get(oppDice.getDie2()) : " "))
+            ;
 
         int c = 0;
         String l1 = "", l2 = "";
@@ -60,10 +70,10 @@ public class AsciiBoardPrinter extends MatchInfoPrinter {
 
             if (c < 0) {
                 l1 = (c > -10 ? " " : "" ) + "x";
-                l2 = (c > -10 ? " " : "" ) + (c == -2 ? "x" : (Math.abs(c)));
+                l2 = (c > -10 ? " " : "" ) + (c == -1 ? " " : (c == -2 ? "x" : (Math.abs(c))));
             } else if (c > 0) {
                 l1 = (c < 10 ? " " : "" ) + "o";
-                l2 = (c < 10 ? " " : "" ) + (c == 2 ? "o" : c);
+                l2 = (c < 10 ? " " : "" ) + (c == 1 ? " " : (c == 2 ? "o" : c));
             } else {
                 l1 = " .";
                 l2 = "  ";
@@ -72,6 +82,11 @@ public class AsciiBoardPrinter extends MatchInfoPrinter {
             asciiBoard = asciiBoard.replace((i < 10 ? "0" : "" ) + i, l1);
             asciiBoard = asciiBoard.replace("" + (i + 30), l2);
         }
+
+        asciiBoard = asciiBoard
+            .replace("xhh", "x" +board.getOppRemovedPieces())
+            .replace("ohh", "o" +board.getIRemovedPieces())
+            .replaceAll("\\*", m.isMyTurn() ? "^" : "⌄");
 
         return asciiBoard;
     }

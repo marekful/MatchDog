@@ -147,6 +147,14 @@ public class GnubgCommand implements Runnable {
 
             fibsCommand = processReply(rawReply);
 
+            // This is bad... will be refactored
+            if (server.getMatch() != null
+                    && server.getMatch().moveHistory.get(server.getMatch().getGameno()) != null
+                    && !(fibsCommand.equals("roll") || fibsCommand.equals("double")  ||
+                         fibsCommand.equals("accept")  || fibsCommand.equals("reject") )) {
+                server.getMatch().moveHistory.get(server.getMatch().getGameno()).add("move " + rawReply);
+            }
+
             server.fibs.sleepFibs(100);
             server.fibsout.println(fibsCommand);
             server.printDebug("sent to fibs: ");
@@ -175,6 +183,7 @@ public class GnubgCommand implements Runnable {
         if(out.contains("-")) {
 
             if(server.fibs.match.isShiftmove()) {
+                server.printDebug("SHIFTING");
                 out = shift(out);
             }
             out = "move " + out;
@@ -207,8 +216,7 @@ public class GnubgCommand implements Runnable {
         }
     }
 
-    private String shift(String in) {
-        server.printDebug("SHIFTING");
+    public static String shift(String in) {
         String [] arr0 = in.split(" ");
         String returnStr = "";
         for(int i = 0; i < arr0.length; i++) {

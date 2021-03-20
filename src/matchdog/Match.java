@@ -1,17 +1,18 @@
 package matchdog;
 
-import jcons.src.com.meyling.console.UnixConsole;
 import matchdog.fibsboard.Dice;
-import matchdog.fibsboard.FibsBoard;
 
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Random;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
 
 public class Match {
+
+	String id;
 
 	String player0, player1, oppClient;
 	int ml;
@@ -45,8 +46,11 @@ public class Match {
 	
 	double [] equities;
 	boolean ownResignInProgress, oppResignInProgress;
+
+	public Map<Integer, ArrayList<String>> moveHistory;
 	
 	Match (MatchDog server, String oppname, int matchlength) {
+
 		this.server = server;
 		player0 = server.prefs.getUsername();
 		player1 = oppname;
@@ -58,6 +62,7 @@ public class Match {
 		cubeOwner = 0;
 		round = 0;	
 		start = new Date();
+		id = generateMatchId();
 		gametime = start.getTime();
 		oppgreeted = false;
 		oppgreetphase = 0;
@@ -103,10 +108,19 @@ public class Match {
 		oppResignInProgress = false;
 		
 		callcounter = 0;
+
+		// stores all gameplay commands from both players,
+		// used to generate and analyse .sgf match file at the end
+		moveHistory = new HashMap<Integer, ArrayList<String>>();
 		
 		// stamps should be set at match start
 		touchStamps();
 
+	}
+
+	private String generateMatchId() {
+		return server.getPlayerName() + "-" + player1 + "-" + ml + "-"
+				+ start.toString().replace(" ", "-");
 	}
 
 	protected void cancelWaitfor() {
@@ -170,6 +184,10 @@ public class Match {
 				server.fibsout.println("leave");
 			}
 		}
+	}
+
+	public String getPlayerOnTurn() {
+		return "[" + (isMyTurn() ? server.getPlayerName() : (isOppsTurn() ? getPlayer1() : "-")) + "]:";
 	}
 	
 	public Date getDroppedat() {
@@ -498,5 +516,34 @@ public class Match {
 	public String generalChat() {
 		Random r = new Random();
 		return chattexts.get(r.nextInt(chattexts.size() - 1));
+	}
+
+	public void writeMoveHistory() throws IOException {
+
+		FileWriter writer = new FileWriter(server.getDataDir() + "matchlogs/" + id + ".txt");
+		for (int gameNo : moveHistory.keySet()) {
+			for(String str : moveHistory.get(gameNo)) {
+				writer.append(str.replace("-", "/")
+						.replace("/bar", "/off")).append(System.lineSeparator());
+			}
+			writer.append(System.lineSeparator());
+			writer.append(System.lineSeparator());
+		}
+		writer.append(System.lineSeparator())
+			  .append("analyse match")
+			  .append(System.lineSeparator())
+		      .append("relational add match")
+			  .append(System.lineSeparator())
+			  .append("save match \"").append(server.getDataDir()).append("matchlogs/").append(id).append(".sgf\"");
+
+		writer.close();
+	}
+
+	public void exportSgf() throws InterruptedException {
+		// export-from-file
+		if (!server.bgRunner.startGnubg(" -c \"" + server.getDataDir() + "matchlogs/" + id + ".txt\"", true)) {
+			server.printDebug("ERROR: Could not export sgf");
+		}
+		server.printDebug("Exported .sgf file");
 	}
 }

@@ -10,9 +10,9 @@ import java.util.Properties;
 public class ProgramPrefs extends Prefs {
 
     // Fibs host
-    public String 	fibshost;
+    public String fibsHost;
     // Fibs port
-    public int 	fibsport;
+    public int fibsPort;
     // Array of full paths to gnubg executable and params (-t for no gui, -q for silent)
     // Each will be tried, firsst succeeds used
     public String[] gnubgCmdArr = new String[] {"", ""};
@@ -43,12 +43,12 @@ public class ProgramPrefs extends Prefs {
         }
     }
 
-    public String getFibshost() {
-        return fibshost;
+    public String getFibsHost() {
+        return fibsHost;
     }
 
-    public int getFibsport() {
-        return fibsport;
+    public int getFibsPort() {
+        return fibsPort;
     }
 
     public String[] getGnubgCmdArr() {

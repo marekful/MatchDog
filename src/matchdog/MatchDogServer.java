@@ -3,6 +3,8 @@ package matchdog;
 import matchdog.fibsboard.FibsBoard;
 import sun.misc.Signal;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.net.*;
@@ -12,7 +14,8 @@ import java.util.Properties;
 public class MatchDogServer {
 
 	HashMap<Integer, String> globalblacklist = new HashMap<Integer, String>();
-	
+	String configDir;
+	String dataDir;
 	int defaultplayer;
 	int currentplayer;
     Map<String, String> prefs;
@@ -25,14 +28,11 @@ public class MatchDogServer {
 
 	    new MatchDogServer(args);
 	}
-
-	private void fibsBoardToASCII(String board) {
-
-    }
 	
 	MatchDogServer(String [] args) {
 
-
+        configDir = Paths.get("").toAbsolutePath().toString().replace("/bin", "/config/");
+        dataDir = Paths.get("").toAbsolutePath().toString().replace("/bin", "/data/");
 
         prefs = new HashMap<String, String>();
 		players = new HashMap<Integer, PlayerPrefs>();
@@ -66,7 +66,9 @@ public class MatchDogServer {
 			players.get(currentplayer),
 			globalblacklist,
 			getLocalHostname(),
-			listenLocal
+			listenLocal,
+            getConfigDir(),
+            getDataDir()
 		);
         (new Thread(g, g.getPlayerName() + "-main")).start();
 		
@@ -195,6 +197,14 @@ public class MatchDogServer {
 
 		return "Unknown";
 	}
+
+    public String getConfigDir() {
+        return configDir;
+    }
+
+    public String getDataDir() {
+        return dataDir;
+    }
 }
 
 

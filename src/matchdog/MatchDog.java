@@ -15,6 +15,8 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 	protected static final String PROMPT = "$ ";
     static final Object lock = new Object();
 
+    String configDir;
+    String dataDir;
     long pid;
 
 	BGRunner bgRunner;
@@ -58,12 +60,20 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 
     Map<String, Boolean> debug;
 	
-	MatchDog(ProgramPrefs progPrefs, PlayerPrefs prefs, HashMap<Integer, String> bl, String hostName, boolean listenLocal) {
-
+	MatchDog(ProgramPrefs progPrefs,
+             PlayerPrefs prefs,
+             HashMap<Integer, String> bl,
+             String hostName,
+             boolean listenLocal,
+             String configDir,
+             String dataDir
+    ) {
         this.programPrefs = progPrefs;
 		this.prefs = prefs;
 		this.listenLocal = listenLocal;
         this.hostName = hostName;
+        this.configDir = configDir;
+        this.dataDir = dataDir;
 		
 		bgRunner = null;
 		fibs = null;
@@ -185,7 +195,8 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 
 		/*
 		* Add SIGINT handler for each listener - stdin and/or socket connection(s)
-		* (This requires the undocumented -XDignore.symbol.file to suppress compiler warnings)
+		* (This requires the undocumented -XDignore.symbol.file to suppress
+		* compiler warnings for using sun.* packages)
 		*/
         Signal.handle(new Signal("INT"), signal -> {
             if (systemPrinter.isSuspended(out)) {
@@ -502,7 +513,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 	private void initFibs() {
 
 		systemPrinter.printLine("Initialising fibs");
-		fibs = new FibsRunner(this, programPrefs.getFibshost(), programPrefs.getFibsport(), fibsCount);
+		fibs = new FibsRunner(this, programPrefs.getFibsHost(), programPrefs.getFibsPort(), fibsCount);
 		
 		fibs.start();				
 
@@ -510,7 +521,9 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 
         synchronized (lock) {
             try {
-                while (!fibs.init) { // init is
+                // init is true when FIBS spited out its banner
+                // and ready receive a login command
+                while (!fibs.init) {
                     lock.wait();
                 }
                 fibsCount++;
@@ -835,4 +848,12 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 	public Collection<PrintStream> getPrintStreams() {
 		return listeners.values();
 	}
+
+    public String getConfigDir() {
+        return configDir;
+    }
+
+    public String getDataDir() {
+        return dataDir;
+    }
 }
