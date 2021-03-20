@@ -2164,13 +2164,6 @@ public class FibsRunner extends Thread {
 		match.scorehistory.put(match.getGameno(), score + star);
 		// <-----------
 
-		try {
-			match.writeMoveHistory();
-			match.exportSgf();
-		} catch (IOException | InterruptedException e) {
-			server.printDebug("ERROR: Could not export match");
-		}
-
 		// playerstat
 		if(server.playerstats != null) {
 			
@@ -2199,7 +2192,18 @@ public class FibsRunner extends Thread {
 				server.printDebug("COULDN'T WRITE PlayerStats! (" + server.getPstatspath() + ")");
 			}
 		}
-	
+
+		// this will take some time (both sides are analysed,
+		// not just one side like in human to gnubg matches :);
+		// gnubg 'threads' setting ('set threads N') determines
+		// concurrent multiple cpu core processing for analysis
+		try {
+			match.writeMoveHistory();
+			match.exportSgf();
+		} catch (IOException | InterruptedException e) {
+			server.printDebug("ERROR: Could not export match");
+		}
+
 		if(match != null && match.isDropped())  {
 			lastmatch = match;
 		}
