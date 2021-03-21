@@ -19,6 +19,8 @@ public class BGRunner  {
 	private final MatchDog server;
 	private final BufferedConsolePrinter printer;
 
+	private String[] fixedArgs;
+
     private BufferedReader pIn;
     private PrintWriter pOut;
 
@@ -32,11 +34,12 @@ public class BGRunner  {
     protected BufferedConsolePrinter eqPrinter;
     private boolean connected, evalCmd;
 
-	BGRunner(String[] command, MatchDog server) {
+	BGRunner(String[] command, MatchDog server, String[] fixedArgs) {
 
         // proc
 		p = null;
 		this.gnubgCommands = command;
+        this.fixedArgs = fixedArgs;
 		this.server = server;
 		printer = new DefaultPrinter(
 			server, "gnubg:", UnixConsole.LIGHT_YELLOW, UnixConsole.BACKGROUND_BLUE
@@ -60,17 +63,22 @@ public class BGRunner  {
 
     // proc
 	public boolean launch(String extraArgs, boolean waitFor) {
-        for (String cmd : gnubgCommands) {
+
+	    String command;
+	    for (String cmd : gnubgCommands) {
+
+	        command = cmd + " " + String.join(" ", fixedArgs) + extraArgs;
+            printer.printLine("Trying to launch gnubg binary");
+
             try {
-                printer.printLine("Trying to launch gnubg binary");
-                p = Runtime.getRuntime().exec(cmd + extraArgs);
+                p = Runtime.getRuntime().exec(command);
                 pid = p.pid();
 
                 printer.setLabel("gnubg[pid=" + pid + "]:")
-                       .printLine("gnubg running (" + cmd + extraArgs + ")");
+                       .printLine("gnubg running (" + command + ")");
                 break;
             } catch (Exception e) {
-                printer.printLine("gnubg not fouAnd at: " + cmd + extraArgs);
+                printer.printLine("gnubg not fouAnd at: " + command);
             }
         }
 
@@ -93,58 +101,50 @@ public class BGRunner  {
         return true;
     }
 
-    public void setup() {
+    public void setup(boolean external, boolean processReply) {
 
         int chequerPlayPly = server.prefs.getCheckquerply();
         int cubeDecisionPly = server.prefs.getCubedecply();
 
-        println("show version");
+        println("show version", processReply);
 
-        println("set eval sameasanalysis off");
-
-        println("set evaluation chequer eval plies " + chequerPlayPly);
-        println("set evaluation cubedecision eval plies " + cubeDecisionPly);
-
-        println("set evaluation chequer evaluation prune on");
-        println("set evaluation cubedecision evaluation prune on");
+        println("set evaluation chequer eval plies " + chequerPlayPly, processReply);
+        println("set evaluation cubedecision eval plies " + cubeDecisionPly, processReply);
 
         for (int i = 0; i < 10; i++) {
-            println("set evaluation movefilter " + server.prefs.getMoveFilter(i));
+            println("set evaluation movefilter " + server.prefs.getMoveFilter(i), processReply);
         }
 
-        println("set rollout chequerplay plies " + chequerPlayPly);
-        println("set rollout cubedecision plies " + cubeDecisionPly);
-
-        println("set rollout truncation cubedecision prune on");
-        println("set rollout truncation chequerplay prune on");
-        println("set rollout chequerplay prune on");
-        println("set rollout cubedecision prune on");
+        println("set rollout chequerplay plies " + chequerPlayPly, processReply);
+        println("set rollout cubedecision plies " + cubeDecisionPly, processReply);
 
         for (int i = 0; i < 10; i++) {
-            println("set rollout player 0 movefilter " + server.prefs.getMoveFilter(i));
+            println("set rollout player 0 movefilter " + server.prefs.getMoveFilter(i), processReply);
         }
 
         Match m = server.getMatch();
         if (m != null && m.getMl() == 1) {
-            println("set evaluation chequer eval cubeful off");
-            println("set evaluation cubedecision eval cubeful off");
-            println("set rollout chequerplay cubeful off");
-            println("set rollout cubedecision cubeful off");
+            println("set evaluation chequer eval cubeful off", processReply);
+            println("set evaluation cubedecision eval cubeful off", processReply);
+            println("set rollout chequerplay cubeful off", processReply);
+            println("set rollout cubedecision cubeful off", processReply);
         }
 
         if (server.prefs.getNoise() > 0.0) {
-            println("set rollout chequerplay noise noise " + server.prefs.getNoise());
-            println("set rollout chequerplay deterministic on");
+            println("set rollout chequerplay noise noise " + server.prefs.getNoise(), processReply);
+            println("set rollout chequerplay deterministic on", processReply);
         }
 
-        println("relational setup SQLite-database=" + server.getPlayerName());
+        println("relational setup SQLite-database=" + server.getPlayerName(), processReply);
 
         printer.printLine("");
         println("show evaluation");
         printer.printLine("");
         println("show rollout");
 
-        println("external localhost:" + server.prefs.getGnuBgPort());
+        if (external) {
+            println("external localhost:" + server.prefs.getGnuBgPort(), processReply);
+        }
 	}
 
 	public void killGnubg(boolean force) {
@@ -177,6 +177,7 @@ public class BGRunner  {
         if (!launch(extraArgs, waitFor)) {
             throw new RuntimeException("Cannot launch gnubg binary");
         }
+        setup(false, !waitFor);
         return true;
     }
 
@@ -189,7 +190,7 @@ public class BGRunner  {
             throw new RuntimeException("Cannot launch gnubg binary");
         }
 
-        setup();
+        setup(true, false);
         connectSocket();
     }
 
@@ -202,7 +203,7 @@ public class BGRunner  {
                 server.stopServer();
                 return;
             }
-            setup();
+            setup(true, false);
             connectSocket();
         } catch (InterruptedException ignored) {}
     }
@@ -216,6 +217,14 @@ public class BGRunner  {
             return;
         }
         processInput();
+    }
+
+    public void println(String str, boolean processInput) {
+	    if (processInput) {
+	        println(str);
+        } else {
+            pOut.println(str);
+        }
     }
 
     protected void processInput() {
@@ -301,6 +310,14 @@ public class BGRunner  {
             server.systemPrinter.printLine("Exception in BGRunner.closeSocket():" + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    public void exportMatchSgf(Match m) {
+        // export-from-file
+        if (!startGnubg(" -c \"" + server.getDataDir() + "matchlogs/" + m.id + ".txt\"", true)) {
+            server.printDebug("ERROR: Could not export sgf");
+        }
+        server.printDebug("Exported .sgf file");
     }
 
     private boolean isEvalCmd() {

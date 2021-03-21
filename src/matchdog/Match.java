@@ -47,7 +47,9 @@ public class Match {
 	double [] equities;
 	boolean ownResignInProgress, oppResignInProgress;
 
-	public Map<Integer, ArrayList<String>> moveHistory;
+	// stores all gameplay commands from both players,
+	// used to generate and analyse .sgf match file at the end
+	public MatchHistory moveHistory;
 	
 	Match (MatchDog server, String oppname, int matchlength) {
 
@@ -109,10 +111,6 @@ public class Match {
 		
 		callcounter = 0;
 
-		// stores all gameplay commands from both players,
-		// used to generate and analyse .sgf match file at the end
-		moveHistory = new HashMap<Integer, ArrayList<String>>();
-		
 		// stamps should be set at match start
 		touchStamps();
 
@@ -187,7 +185,7 @@ public class Match {
 	}
 
 	public String getPlayerOnTurn() {
-		return "[" + (isMyTurn() ? server.getPlayerName() : (isOppsTurn() ? getPlayer1() : "-")) + "]:";
+		return isMyTurn() ? getPlayer0() : getPlayer1();
 	}
 	
 	public Date getDroppedat() {
@@ -220,8 +218,15 @@ public class Match {
 	}
 
 	public void setGameno(int newgameno) {
+		if (gameno < 1 && newgameno == 1) {
+			gameno = 1;
+			moveHistory = new MatchHistory(this);
+		}
+		gameno = newgameno;
+	}
 
-		this.gameno = newgameno;
+	public String getPlayer0() {
+		return player0;
 	}
 
 	public String getPlayer1() {
@@ -486,6 +491,10 @@ public class Match {
 		this.oppResignInProgress = oppResignInProgress;
 	}
 
+	public MatchHistory getMatchHistory() {
+		return moveHistory;
+	}
+
 	public String matchInfo() {
 		return  "[ turn: " + turn[0] + " " + turn[1] + " | round: "
 				+ getRound() + " | game: " + getGameno() + " | cube: "
@@ -516,34 +525,5 @@ public class Match {
 	public String generalChat() {
 		Random r = new Random();
 		return chattexts.get(r.nextInt(chattexts.size() - 1));
-	}
-
-	public void writeMoveHistory() throws IOException {
-
-		FileWriter writer = new FileWriter(server.getDataDir() + "matchlogs/" + id + ".txt");
-		for (int gameNo : moveHistory.keySet()) {
-			for(String str : moveHistory.get(gameNo)) {
-				writer.append(str.replace("-", "/")
-						.replace("/bar", "/off")).append(System.lineSeparator());
-			}
-			writer.append(System.lineSeparator());
-			writer.append(System.lineSeparator());
-		}
-		writer.append(System.lineSeparator())
-			  .append("analyse match")
-			  .append(System.lineSeparator())
-		      .append("relational add match")
-			  .append(System.lineSeparator())
-			  .append("save match \"").append(server.getDataDir()).append("matchlogs/").append(id).append(".sgf\"");
-
-		writer.close();
-	}
-
-	public void exportSgf() throws InterruptedException {
-		// export-from-file
-		if (!server.bgRunner.startGnubg(" -c \"" + server.getDataDir() + "matchlogs/" + id + ".txt\"", true)) {
-			server.printDebug("ERROR: Could not export sgf");
-		}
-		server.printDebug("Exported .sgf file");
 	}
 }

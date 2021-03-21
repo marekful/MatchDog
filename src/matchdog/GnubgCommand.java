@@ -149,10 +149,9 @@ public class GnubgCommand implements Runnable {
 
             // This is bad... will be refactored
             if (server.getMatch() != null
-                    && server.getMatch().moveHistory.get(server.getMatch().getGameno()) != null
                     && !(fibsCommand.equals("roll") || fibsCommand.equals("double")  ||
                          fibsCommand.equals("accept")  || fibsCommand.equals("reject") )) {
-                server.getMatch().moveHistory.get(server.getMatch().getGameno()).add("move " + rawReply);
+                server.getMatch().getMatchHistory().addCommand("move " + rawReply);
             }
 
             server.fibs.sleepFibs(100);

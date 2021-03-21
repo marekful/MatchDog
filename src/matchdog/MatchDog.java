@@ -53,6 +53,8 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 	protected int fibsMode;
 
     boolean contd, welcome;
+
+    ArrayList<BufferedConsolePrinter> printers;
 	
 	MatchDogPrinter printer;
     DefaultPrinter systemPrinter;
@@ -135,7 +137,8 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 				setFibsMode(3);
 			} else {
 
-                bgRunner = new BGRunner(programPrefs.getGnubgCmdArr(), this);
+			    String[] fixedArgs = {"-t", "-q", "-s", configDir + "gnubg", "-D", dataDir + "gnubg"};
+                bgRunner = new BGRunner(programPrefs.getGnubgCmdArr(), this, fixedArgs);
 				
 				initPlayerStats();
 				statview = new StatWriter(this);
@@ -410,10 +413,12 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
                     unSuspendOutput(out);
                     restartFibs();
                     continue;
-                } else if (line.equals("rebg")) {
+                } else if (line.startsWith("analyse ")) {
+                    String[] split = line.split(" ");
                     leaveShell(out);
                     unSuspendOutput(out);
-                    bgRunner.restartGnubg();
+                    if (split.length < 2) continue;
+                    bgRunner.startGnubg("-c " + split[1], false);
                     continue;
                 } else if (line.equals("uptime")) {
                     out.print(TimeAgo.fromMs(System.currentTimeMillis() - serverStartedAt.getTime()));
