@@ -13,7 +13,6 @@ import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -2186,20 +2185,7 @@ public class FibsRunner extends Thread {
 			}
 		}
 
-		// this will take some time (both sides are analysed,
-		// not just one side like in human to gnubg matches :);
-		// gnubg 'threads' setting ('set threads N') determines
-		// concurrent multiple cpu core processing for analysis
-		if (!wasResumed) {
-			try {
-				match.getMatchHistory().writeToFile();
-				server.bgRunner.exportMatchSgf(match);
-			} catch (IOException e) {
-				server.printDebug("ERROR: Could not export match");
-			}
-		}
-
-		server.removePrinter(match.getMatchHistory().printer);
+		match.getMatchHistory().onMatchEnd();
 
 		if(match != null && match.isDropped())  {
 			lastmatch = match;

@@ -220,7 +220,7 @@ public class Match {
 	public void setGameno(int newgameno) {
 		if (gameno < 1 && newgameno == 1) {
 			gameno = 1;
-			moveHistory = new MatchHistory(this);
+			moveHistory = new MatchHistory(this, MatchHistory.WRITE_FILE_AT_MATCH_END);
 		}
 		gameno = newgameno;
 	}

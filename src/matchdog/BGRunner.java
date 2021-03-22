@@ -71,7 +71,7 @@ public class BGRunner  {
 	    String command;
 	    for (String cmd : gnubgCommands) {
 
-	        command = cmd + " " + String.join(" ", fixedArgs) + extraArgs;
+	        command = cmd + " " + String.join(" ", fixedArgs) + " " + extraArgs;
             printer.printLine("Trying to launch gnubg binary");
 
             try {
@@ -314,14 +314,6 @@ public class BGRunner  {
             server.systemPrinter.printLine("Exception in BGRunner.closeSocket():" + e.getMessage());
             e.printStackTrace();
         }
-    }
-
-    public void exportMatchSgf(Match m) {
-        // export-from-file
-        if (!startGnubg(" -c \"" + server.getDataDir() + "matchlogs/" + m.id + ".txt\"", true)) {
-            server.printDebug("ERROR: Could not export sgf");
-        }
-        server.printDebug("Exported .sgf file");
     }
 
     private boolean isEvalCmd() {
