@@ -31,6 +31,8 @@ public class MatchHistory {
             match.server, "MatchHistory", UnixConsole.LIGHT_RED, UnixConsole.BACKGROUND_WHITE
         );
 
+        match.server.addPrinter(printer);
+
         this.match = match;
         initialCommands();
     }

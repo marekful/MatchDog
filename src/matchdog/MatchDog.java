@@ -10,7 +10,7 @@ import sun.misc.Signal;
 import java.io.*;
 import java.util.*;
 
-public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
+public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, SuspendableOutputPrinter {
 	
 	protected static final String PROMPT = "$ ";
     static final Object lock = new Object();
@@ -102,6 +102,8 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
         connectionListeners = new HashMap<Integer, PrintStream>();
         inMatchDogShell = new HashMap<PrintStream, Boolean>();
 
+        printers = new ArrayList<>();
+
         // global blacklist
 		this.bl = bl;
 		
@@ -114,6 +116,10 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
         socketServerPrinter = new DefaultPrinter(
             this, "socketServer[port=" + prefs.getListenerport() + "]:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_RED
         );
+
+        addPrinter(printer);
+        addPrinter(systemPrinter);
+        addPrinter(socketServerPrinter);
 
         debug = new HashMap<>();
         debug.put("printGnubgCommand", false);
@@ -138,7 +144,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 			} else {
 
 			    String[] fixedArgs = {"-t", "-q", "-s", configDir + "gnubg", "-D", dataDir + "gnubg"};
-                bgRunner = new BGRunner(programPrefs.getGnubgCmdArr(), this, fixedArgs);
+                bgRunner = new BGRunner(this, programPrefs.getGnubgCmdArr(), fixedArgs);
 				
 				initPlayerStats();
 				statview = new StatWriter(this);
@@ -719,28 +725,21 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
 		}, 300000L, 300000L);
 	}
 
-	protected ArrayList<BufferedConsolePrinter> getPrinters() {
-        ArrayList<BufferedConsolePrinter> p = new ArrayList<>();
-
-	    if (fibs.terminating) {
-	        return p;
-        }
-
-        p.add(systemPrinter);
-        p.add(socketServerPrinter);
-        p.add(printer);
-        p.add(bgRunner.matchPrinter);
-        p.add(bgRunner.matchPrinter);
-        p.add(bgRunner.eqPrinter);
-        p.add(fibs.matchInfoPrinter);
-        p.add(fibs.fibsCommandPrinter);
-        p.add(fibs.boardPrinter);
-        p.add(fibs.linePrinter);
-
-        return p;
+	public ArrayList<BufferedConsolePrinter> getPrinters() {
+	    return printers;
     }
 
-    protected void suspendOutput(PrintStream output) {
+    @Override
+    public void addPrinter(BufferedConsolePrinter printer) {
+        printers.add(printer);
+    }
+
+    @Override
+    public void removePrinter(BufferedConsolePrinter printer) {
+        printers.remove(printer);
+    }
+
+    public void suspendOutput(PrintStream output) {
 	    for (BufferedConsolePrinter p : getPrinters()) {
 	        try {
 	            p.setSuspended(output, true);
@@ -748,7 +747,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource {
         }
     }
 
-    protected void unSuspendOutput(PrintStream output) {
+    public void unSuspendOutput(PrintStream output) {
         for (BufferedConsolePrinter p : getPrinters()) {
             try {
                 p.setSuspended(output, false);

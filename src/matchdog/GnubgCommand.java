@@ -67,7 +67,10 @@ public class GnubgCommand implements Runnable {
             try {
                 replytime = System.nanoTime();
 
-                rawReply = input.readLine();
+                if ((rawReply = input.readLine()) == null) {
+                    server.printDebug("gnubg reply NULL");
+                    continue;
+                }
 
                 if((replyDiff = (System.nanoTime() - replytime) / 1000000000.0) < 0.001) {
                     replyDiff *= 1000;

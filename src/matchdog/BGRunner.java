@@ -17,7 +17,6 @@ public class BGRunner  {
 	private long pid;
 	private final String[] gnubgCommands;
 	private final MatchDog server;
-	private final BufferedConsolePrinter printer;
 
 	private String[] fixedArgs;
 
@@ -30,11 +29,12 @@ public class BGRunner  {
     private BufferedReader sIn;
     private PrintWriter sOut;
 
-    protected BufferedConsolePrinter matchPrinter;
-    protected BufferedConsolePrinter eqPrinter;
+    final BufferedConsolePrinter matchPrinter;
+    final BufferedConsolePrinter eqPrinter;
+    final BufferedConsolePrinter printer;
     private boolean connected, evalCmd;
 
-	BGRunner(String[] command, MatchDog server, String[] fixedArgs) {
+	BGRunner(MatchDog server, String[] command, String[] fixedArgs) {
 
         // proc
 		p = null;
@@ -55,6 +55,10 @@ public class BGRunner  {
         eqPrinter = new DefaultPrinter(
             server, "Equities:", UnixConsole.LIGHT_YELLOW, UnixConsole.BACKGROUND_BLACK
         );
+
+        server.addPrinter(printer);
+        server.addPrinter(matchPrinter);
+        server.addPrinter(eqPrinter);
 	}
 
     public long getPid() {

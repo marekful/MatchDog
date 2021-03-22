@@ -197,6 +197,11 @@ public class FibsRunner extends Thread {
 		boardPrinter = new Utf8BoardPrinter(
             server, "", ConsoleColorPrinter.DEFAULT_COLOR, ConsoleColorPrinter.DEFAULT_BGCOLOR
 		);
+
+		server.addPrinter(linePrinter);
+		server.addPrinter(matchInfoPrinter);
+		server.addPrinter(fibsCommandPrinter);
+		server.addPrinter(boardPrinter);
 	}
 
 	@Override
@@ -1437,6 +1442,9 @@ public class FibsRunner extends Thread {
 				resignpts = Integer.parseInt(ptstr.trim());
 			} catch (Exception e) {}
 
+			if (match.isMyTurn()) {
+				match.moveHistory.addCommand("set turn " + match.getPlayer1());
+			}
 			int resignLevel = resignpts / lastBoard.getDoublingCube();
 			String resignText = resignLevel == 2 ? "gammon" : (resignLevel == 3 ? "backgammon" : "normal");
 			match.moveHistory.addCommand("resign " + resignText);
@@ -1699,9 +1707,23 @@ public class FibsRunner extends Thread {
 					} //// END: RESIGN ////
 					
 					wMoveBoard = true;
-                    if(inputBoard.getCanMove() > 0) {
-                        server.bgRunner.execBoard(in);
-                    }
+					///----->
+					if(inputBoard.getCanMove() > 0) {
+						FibsBoard moveBoard  = new FibsBoard(in);
+						server.printDebug(" >> > is SHIFT move: " + match.isShiftmove());
+						server.printDebug(" >> > is dblBrd.dir: " + moveBoard.getDirection());
+						server.printDebug(" >> > is dblBrd.clr: " + moveBoard.getColour());
+						server.printDebug(" >> > is dblBrd.trn: " + moveBoard.getTurn());
+						if (moveBoard.getDirection() == 1 && moveBoard.getColour() == -1 && moveBoard.getTurn() == -1) {
+							server.printDebug("REVERSING -dir-clr- for move-board");
+							server.printDebug("  orig: " + in);
+							moveBoard.setColour(moveBoard.getColour() == 1 ? -1 : 1);
+							moveBoard.setDirection(moveBoard.getDirection() == 1 ? -1 : 1);
+							server.printDebug("revved: " + moveBoard.toString());
+						}
+						server.bgRunner.execBoard(moveBoard.toString());
+					}
+					///<------
 					return;
 				}
 
@@ -1869,23 +1891,22 @@ public class FibsRunner extends Thread {
 								+ (match.getCrawfordscore() > -1 ? " crawford-score: " + match.getCrawfordscore() : "")
 								+ "]");
 
+						///------> roll--board (roll or double)
 						FibsBoard rollBoard = new FibsBoard(in);
-						server.printDebug(" >> > is SHIFT move: " + match.isShiftmove());
-						server.printDebug(" >> > is dblBrd.dir: " + rollBoard.getDirection());
-						server.printDebug(" >> > is dblBrd.clr: " + rollBoard.getColour());
-						server.printDebug(" >> > is dblBrd.trn: " + rollBoard.getTurn());
-						server.bgRunner.execBoard(in);
-
-						/*FibsBoard rollBoard = new FibsBoard(in);
-						server.printDebug("is SHIFT move: " + match.isShiftmove());
-						if (rollBoard.getDirection() == 1) {
-							server.printDebug("REVERSING direction for roll-board");
+						server.printDebug(" >rol> > is SHIFT move: " + match.isShiftmove());
+						server.printDebug(" >rol> > is dblBrd.dir: " + rollBoard.getDirection());
+						server.printDebug(" >rol> > is dblBrd.clr: " + rollBoard.getColour());
+						server.printDebug(" >rol> > is dblBrd.trn: " + rollBoard.getTurn());
+						if ((rollBoard.getTurn() == -1 && rollBoard.getColour() == 1) ||
+							(rollBoard.getDirection() == 1 && rollBoard.getTurn() == -1 && rollBoard.getColour() == -1)) {
+							server.printDebug("REVERSING -dir-clr- for roll-board");
 							server.printDebug("  orig: " + in);
-							rollBoard.setDirection(-1);
+							rollBoard.setColour(rollBoard.getColour() == 1 ? -1 : 1);
+							rollBoard.setDirection(rollBoard.getDirection() == 1 ? -1 : 1);
 							server.printDebug("revved: " + rollBoard.toString());
 						}
-						server.bgRunner.execBoard(rollBoard.toString());*/
-
+						server.bgRunner.execBoard(rollBoard.toString());
+						///<------
 
 
 					} else {
@@ -1969,24 +1990,27 @@ public class FibsRunner extends Thread {
 					 * the external interface (i.e. fibsboard).
 					 *
 					 * */
+					///-----> double--board (take or drop)
 					FibsBoard dblBoard = new FibsBoard(in);
-					server.printDebug(" >> > is SHIFT move: " + match.isShiftmove());
-					server.printDebug(" >> > is dblBrd.dir: " + dblBoard.getDirection());
-					server.printDebug(" >> > is dblBrd.clr: " + dblBoard.getColour());
-					server.printDebug(" >> > is dblBrd.trn: " + dblBoard.getTurn());
+					server.printDebug(" >dbl> > is SHIFT move: " + match.isShiftmove());
+					server.printDebug(" >dbl> > is dblBrd.dir: " + dblBoard.getDirection());
+					server.printDebug(" >dbl> > is dblBrd.clr: " + dblBoard.getColour());
+					server.printDebug(" >dbl> > is dblBrd.trn: " + dblBoard.getTurn());
 					/*if (dblBoard.getDirection() == 1) {
 						server.printDebug("REVERSING direction for double-board");
 						server.printDebug("  orig: " + in);
 						dblBoard.setDirection(-1);
 						server.printDebug("revved: " + dblBoard.toString());
 					}*/
-					if (dblBoard.getTurn() != dblBoard.getColour()) {
-						server.printDebug("REVERSING -turn- for double-board");
+					if (dblBoard.getTurn() == -1 && dblBoard.getColour() == 1) {
+						server.printDebug("REVERSING -dir-clr- for double-board");
 						server.printDebug("  orig: " + in);
-						dblBoard.setTurn(dblBoard.getColour());
+						dblBoard.setColour(dblBoard.getColour() == 1 ? -1 : 1);
+						dblBoard.setDirection(dblBoard.getDirection() == 1 ? -1 : 1);
 						server.printDebug("revved: " + dblBoard.toString());
 					}
 					server.bgRunner.execBoard(dblBoard.toString());
+					///<-----
 				}
 			}
 		} //// END: PROCESS TURN
@@ -2175,6 +2199,8 @@ public class FibsRunner extends Thread {
 			}
 		}
 
+		server.removePrinter(match.getMatchHistory().printer);
+
 		if(match != null && match.isDropped())  {
 			lastmatch = match;
 		}
@@ -2352,6 +2378,11 @@ public class FibsRunner extends Thread {
             server.fibsout.println("logout");
             server.printDebug("Terminating FibsRunner: sent 'logout'");
         }
+
+		server.removePrinter(linePrinter);
+		server.removePrinter(matchInfoPrinter);
+		server.removePrinter(fibsCommandPrinter);
+		server.removePrinter(boardPrinter);
 		
 		try {
 			s.shutdownInput();
