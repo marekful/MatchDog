@@ -2,6 +2,8 @@
 MatchDog.iml
 bin/
 data/
-
 out/
 config/*.pprefs
+config/matchdog.prefs
+config/gnubg/
+etc/
