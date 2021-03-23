@@ -29,6 +29,7 @@ public class FibsRunner extends Thread {
 	static final int timoutSeconds = 90;
 	static final String FIBSMSG_WAVES_GOODBYE = "waves goodbye";
     static final Object lock = new Object();
+    static final Object lockEx = new Object();
 
     static final Pattern toggleLine = Pattern.compile("^([a-z]+)\\s+(YES|NO)\\s*$");
 	
@@ -1003,7 +1004,8 @@ public class FibsRunner extends Thread {
 	}
 
 	private boolean oppIsMatchDog() {
-		return match != null && match.getOppClient().equals(server.programPrefs.getPlatform());
+		return match != null && match.getOppClient() != null
+				&& match.getOppClient().equals(server.programPrefs.getPlatform());
 	}
 
 	private synchronized void processGamePlay(String in) {
@@ -1708,6 +1710,23 @@ public class FibsRunner extends Thread {
 					wMoveBoard = true;
 					///----->
 					if(inputBoard.getCanMove() > 0) {
+
+						if (match instanceof MatchEx) {
+							match.releaseLockEx = false;
+							((MatchEx)match).hint();
+							synchronized (lockEx) {
+								try {
+									// outOK is true when MatchDog has connected
+									// its output writer to our socket
+									while (match == null || !match.releaseLockEx) {
+										lockEx.wait();
+									}
+								} catch (InterruptedException e) {
+									return;
+								}
+							}
+						}
+
 						FibsBoard moveBoard  = new FibsBoard(in);
 						server.printDebug(" >> > is SHIFT move: " + match.isShiftmove());
 						server.printDebug(" >> > is dblBrd.dir: " + moveBoard.getDirection());
@@ -1809,7 +1828,7 @@ public class FibsRunner extends Thread {
                     if (/*!match.isShiftmove() && */lastBoard.getDirection() == -1) {
 						move = GnubgCommand.shift(move);
 					}
-                    match.moveHistory.addCommand(move);
+                    match.moveHistory.addCommand(GnubgCommand.fibsToGnubgCommand(move));
                     //<---
 
 
@@ -2186,6 +2205,7 @@ public class FibsRunner extends Thread {
 		}
 
 		match.getMatchHistory().onMatchEnd();
+		match.onMatchEnd();
 
 		if(match != null && match.isDropped())  {
 			lastmatch = match;

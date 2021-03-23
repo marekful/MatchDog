@@ -101,6 +101,8 @@ public class MatchHistory {
         }
 
         printer.printLine("Command: " + command);
+
+        //match.sendCommand(command);
     }
 
     public void setTurn() {

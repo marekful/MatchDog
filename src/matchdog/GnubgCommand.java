@@ -180,12 +180,7 @@ public class GnubgCommand implements Runnable {
 
     private String transformCommand(String in) {
 
-        String out = in.replace("25", "bar").
-                replace("/0", "/off").
-                replace("/", "-").
-                replace("*", "").
-                replace("take", "accept").
-                replace("drop", "reject");
+        String out = gnubgToFibsCommand(in);
 
         if(out.contains("-")) {
 
@@ -221,6 +216,21 @@ public class GnubgCommand implements Runnable {
                 server.fibs.match.equities[i] = Double.parseDouble(split0[i]);
             }
         }
+    }
+
+    public static String fibsToGnubgCommand(String in) {
+        return in.replace("bar", "25").
+                replace("-off", "-0").
+                replace("-", "/");
+    }
+
+    public static String gnubgToFibsCommand(String in) {
+        return in.replace("25", "bar").
+                replace("/0", "/off").
+                replace("/", "-").
+                replace("*", "").
+                replace("take", "accept").
+                replace("drop", "reject");
     }
 
     public static String shift(String in) {

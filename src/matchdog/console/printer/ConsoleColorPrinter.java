@@ -1,5 +1,7 @@
 package matchdog.console.printer;
 
+import jcons.src.com.meyling.console.ConsoleForegroundColor;
+import jcons.src.com.meyling.console.UnixConsole;
 import matchdog.PrintableStreamSource;
 
 public class ConsoleColorPrinter extends ConsolePrinter {
@@ -7,12 +9,20 @@ public class ConsoleColorPrinter extends ConsolePrinter {
     public static final String DEFAULT_BGCOLOR = "";
     public static final String RESET = "\u001B[0m";
 
-    private final String color, bgColor;
+    private String color, bgColor;
 
     ConsoleColorPrinter(PrintableStreamSource source, String label, String color, String bgColor) {
         super(source, label);
         this.color = color;
         this.bgColor = bgColor;
+    }
+
+    public void setColor(String color) {
+        this.color = color;
+    }
+
+    public void setBgColor(String bgColor) {
+        this.bgColor = color;
     }
 
     public String getColor() {

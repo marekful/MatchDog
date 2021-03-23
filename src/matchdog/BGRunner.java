@@ -20,8 +20,8 @@ public class BGRunner  {
 
 	private String[] fixedArgs;
 
-    private BufferedReader pIn;
-    private PrintWriter pOut;
+    protected BufferedReader pIn;
+    protected PrintWriter pOut;
 
     // gnubg external
     private Socket s = null;
@@ -33,6 +33,7 @@ public class BGRunner  {
     final BufferedConsolePrinter eqPrinter;
     final BufferedConsolePrinter printer;
     private boolean connected, evalCmd;
+    private boolean autoFlushProcOut;
 
 	BGRunner(MatchDog server, String[] command, String[] fixedArgs) {
 
@@ -78,7 +79,7 @@ public class BGRunner  {
                 p = Runtime.getRuntime().exec(command);
                 pid = p.pid();
 
-                printer.setLabel("gnubg[pid=" + pid + "]:")
+                printer.setLabel( printer.getLabel() + "[pid=" + pid + "]:")
                        .printLine("gnubg running (" + command + ")");
                 break;
             } catch (Exception e) {
@@ -212,6 +213,45 @@ public class BGRunner  {
         } catch (InterruptedException ignored) {}
     }
 
+    public void connectSocket() {
+
+        while(!connected) {
+            try {
+                Thread.sleep(100);
+                InetAddress sa = InetAddress.getByName("localhost");
+                s = new Socket(sa, server.prefs.getGnuBgPort());
+                if(s.isConnected()) {
+                    server.systemPrinter.printLine("Connected to bg socket");
+                    matchPrinter.resetLabel();
+                    matchPrinter.setLabel(matchPrinter.getLabel() + "[port=" + s.getPort() + "]");
+                    connected = true;
+                }
+                sIn = new BufferedReader(new InputStreamReader(s.getInputStream()));
+                sOut = new PrintWriter(s.getOutputStream(), true);
+
+            } catch(InterruptedException e) {
+                return;
+            } catch(Exception e) {
+                server.systemPrinter.printLine(
+                        "Exception in BGRunner.connectSocket(): " + e.getMessage() + ", retrying..."
+                );
+            }
+        }
+        processInput();
+    }
+
+    public void closeSocket() {
+        try {
+            sIn.close();
+            sOut.close();
+            s.close();
+            connected = false;
+        } catch (IOException e) {
+            server.systemPrinter.printLine("Exception in BGRunner.closeSocket():" + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     public void println(String str) {
         pOut.println(str);
         try {
@@ -274,45 +314,6 @@ public class BGRunner  {
         } catch (RuntimeException e) {
             server.systemPrinter.printLine("Restarting gnubg now");
             restartGnubg();
-        }
-    }
-
-
-    public void connectSocket() {
-
-        while(!connected) {
-            try {
-                Thread.sleep(100);
-                InetAddress sa = InetAddress.getByName("localhost");
-                s = new Socket(sa, server.prefs.getGnuBgPort());
-                if(s.isConnected()) {
-                    server.systemPrinter.printLine("Connected to bg socket");
-                    matchPrinter.setLabel("gnubg[port=" + s.getPort() + "]");
-                    connected = true;
-                }
-                sIn = new BufferedReader(new InputStreamReader(s.getInputStream()));
-                sOut = new PrintWriter(s.getOutputStream(), true);
-
-            } catch(InterruptedException e) {
-                return;
-            } catch(Exception e) {
-                server.systemPrinter.printLine(
-                        "Exception in BGRunner.connectSocket(): " + e.getMessage() + ", retrying..."
-                );
-            }
-        }
-        processInput();
-    }
-
-    public void closeSocket() {
-        try {
-            sIn.close();
-            sOut.close();
-            s.close();
-            connected = false;
-        } catch (IOException e) {
-            server.systemPrinter.printLine("Exception in BGRunner.closeSocket():" + e.getMessage());
-            e.printStackTrace();
         }
     }
 

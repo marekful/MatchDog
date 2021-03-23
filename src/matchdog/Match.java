@@ -47,6 +47,8 @@ public class Match {
 	double [] equities;
 	boolean ownResignInProgress, oppResignInProgress;
 
+	boolean releaseLockEx = false;
+
 	// stores all gameplay commands from both players,
 	// used to generate and analyse .sgf match file at the end
 	public MatchHistory moveHistory;
@@ -218,10 +220,16 @@ public class Match {
 	}
 
 	public void setGameno(int newgameno) {
+
 		if (gameno < 1 && newgameno == 1) {
 			gameno = 1;
-			moveHistory = new MatchHistory(this, MatchHistory.WRITE_FILE_AT_MATCH_END);
+			if (this instanceof MatchEx) {
+				moveHistory = new MatchHistory((MatchEx) this, MatchHistory.WRITE_FILE_AT_MATCH_END);
+			} else {
+				moveHistory = new MatchHistory(this, MatchHistory.WRITE_FILE_AT_MATCH_END);
+			}
 		}
+
 		gameno = newgameno;
 	}
 
@@ -494,6 +502,8 @@ public class Match {
 	public MatchHistory getMatchHistory() {
 		return moveHistory;
 	}
+
+	public void onMatchEnd() {}
 
 	public String matchInfo() {
 		return  "[ turn: " + turn[0] + " " + turn[1] + " | round: "
