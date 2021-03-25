@@ -6,7 +6,6 @@ import matchdog.console.printer.BufferedConsolePrinter;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -234,7 +233,7 @@ public class GnubgCommand implements Runnable {
     }
 
     public static String shift(String in) {
-        String [] arr0 = in.split(" ");
+        String [] arr0 = in.trim().split(" ");
         String returnStr = "";
         for(int i = 0; i < arr0.length; i++) {
             String [] arr1 = arr0[i].split("-");

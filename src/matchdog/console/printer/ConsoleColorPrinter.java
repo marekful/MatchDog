@@ -22,7 +22,7 @@ public class ConsoleColorPrinter extends ConsolePrinter {
     }
 
     public void setBgColor(String bgColor) {
-        this.bgColor = color;
+        this.bgColor = bgColor;
     }
 
     public String getColor() {

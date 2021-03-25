@@ -9,14 +9,18 @@ import java.util.Properties;
 
 class PlayerPrefs extends Prefs {
 
+	public final static int GNUBG_USE_EXTERNAL = 0;
+	public final static int GNUBG_USE_HINT = 1;
+
 	public Properties props;
 	public String username, password, email;
 	public boolean autologin, autoinvite, autojoin, autoinvitesaved, autojoinsaved;
 	public int maxml, checkquerply, cubedecply, expdivider, replimit, replaytimeout;
-    public int gnubgextport, listenerport;
+    public int gnubgType, gnubgextport, listenerport;
 	public double noise;
 	public String [] movefilters = {"", "", "", "", "", "", "", "", "", ""};
 	public Map<String, Integer> preferredOpps;
+	public boolean analyseMatch;
 
 	PlayerPrefs(Properties props) {
 		this.props = props;
@@ -103,6 +107,14 @@ class PlayerPrefs extends Prefs {
 
 	public void setMaxml(int maxml) {
 		this.maxml = maxml;
+	}
+
+	public int getGnubgType() {
+		return gnubgType;
+	}
+
+	public void setGnubgType(int gnubgType) {
+		this.gnubgType = gnubgType;
 	}
 
 	public int getCheckquerply() {
@@ -192,4 +204,12 @@ class PlayerPrefs extends Prefs {
     public int getReplayTimeout() {
         return replaytimeout;
     }
+
+	public boolean analyseMatch() {
+		return analyseMatch;
+	}
+
+	public void setAnalyseMatch(boolean analyseMatch) {
+		this.analyseMatch = analyseMatch;
+	}
 }

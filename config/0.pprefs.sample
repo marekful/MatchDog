@@ -22,6 +22,9 @@ i_expdivider                          : 100
 i_replimit                            : -16000
 i_replaytimeout                       : 8
 
+# 0: use external iface, 1: use hint  
+i_gnubgType                           : 1
+
 i_checkquerply                        : 3
 i_cubedecply                          : 3
 d_noise                               : 0.0

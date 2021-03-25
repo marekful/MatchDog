@@ -3,11 +3,13 @@ package matchdog;
 import jcons.src.com.meyling.console.UnixConsole;
 import matchdog.console.printer.DefaultPrinter;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class MatchHistory {
 
@@ -22,6 +24,9 @@ public class MatchHistory {
     private final Map<Integer, ArrayList<String>> commands;
 
     private FileWriter writer;
+    private FileWriter tmpWriter;
+
+    String rand;
 
     DefaultPrinter printer;
 
@@ -57,6 +62,27 @@ public class MatchHistory {
             }
         }
         return writer;
+    }
+
+    private void deleteTempFile() {
+        File o = new File(getTempFileName() + ".tmp");
+        o.delete();
+    }
+
+    private FileWriter getTmpWriter() {
+        if (tmpWriter == null) {
+            try {
+                deleteTempFile();
+                rand = String.format("%.0f", Double.parseDouble(String.valueOf(Math.random())) * 10000);
+
+                File f = new File(getTempFileName() + ".tmp");
+                tmpWriter = new FileWriter(f);
+            } catch (IOException e) {
+                printer.printLine("Cannot open " + getTempFileName() + " for writing");
+                return null;
+            }
+        }
+        return tmpWriter;
     }
 
     private void initialCommands() {
@@ -109,12 +135,8 @@ public class MatchHistory {
         addCommand("set turn " + match.getPlayerOnTurn());
     }
 
-    public void writeToFile() throws IOException {
+    public void writeToFile(FileWriter writer, boolean addFinalCommands, boolean addHint) throws IOException {
 
-        if ((writer = getWriter()) == null) {
-            printer.printLine("Not writing file");
-            return;
-        }
 
         for (int gameNo : commands.keySet()) {
             for(String str : commands.get(gameNo)) {
@@ -124,26 +146,40 @@ public class MatchHistory {
             writer.append(System.lineSeparator());
             writer.append(System.lineSeparator());
         }
-        writer.append(System.lineSeparator())
-                .append("analyse match")
-                .append(System.lineSeparator())
-                .append("relational add match")
-                .append(System.lineSeparator())
-                .append("save match \"").append(getFileName()).append(".sgf\"");
+
+        if (addFinalCommands) {
+            writer.append(System.lineSeparator())
+                    .append("analyse match")
+                    .append(System.lineSeparator())
+                    .append("relational add match")
+                    .append(System.lineSeparator())
+                    .append("save match \"").append(getFileName()).append(".sgf\"");
+        }
+
+        if (addHint) {
+            writer.append("hint").append(System.lineSeparator()).append(System.lineSeparator());
+        }
+    }
+
+    public void writeToTempFile() throws IOException {
+        writeToFile(getTmpWriter(), false, true);
+        Objects.requireNonNull(getTmpWriter()).flush();
+        tmpWriter = null;
     }
 
     public void exportMatchToSgf() {
 
         (new Thread(() -> {
+            printer.printLine("Starting .sgf export");
             String[] fixedArgs = {"-t", "-q", "-s", configDir + "gnubg", "-D", dataDir + "gnubg"};
-            BGRunner analRunner = new BGRunner(match.server, match.server.programPrefs.getGnubgCmdArr(), fixedArgs);
+            Gnubg analRunner = new GnubgAnalysis(match.server, match.server.programPrefs.getGnubgCmdArr(), fixedArgs, true);
 
             // export-from-file
-            if (!analRunner.startGnubg("-c \"" + getFileName() + ".txt\"", true)) {
+            if (!analRunner.start("-c \"" + getFileName() + ".txt\"", true)) {
                 printer.printLine("ERROR: Could not export sgf");
                 return;
             }
-            printer.printLine("Exported .sgf file");
+            printer.printLine("Exported " + getFileName() + ".sgf");
         })).start();
     }
 
@@ -151,7 +187,13 @@ public class MatchHistory {
         return  dataDir + "matchlogs/" + match.id;
     }
 
+    public String getTempFileName() {
+        return dataDir + "matchlogs/" + match.id + "-" + rand;
+    }
+
     public void onMatchEnd() {
+
+        deleteTempFile();
 
         if (!match.wasResumed && (writer = getWriter()) != null) {
             try {
@@ -163,7 +205,7 @@ public class MatchHistory {
                             .append(System.lineSeparator())
                             .append("save match \"").append(getFileName()).append(".sgf\"");
                 } else if (writeStrategy == WRITE_FILE_AT_MATCH_END) {
-                    writeToFile();
+                    writeToFile(getWriter(), true, false);
                 }
                 writer.flush();
                 writer.close();

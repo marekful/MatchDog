@@ -1,6 +1,7 @@
 package matchdog;
 
 import matchdog.fibsboard.Dice;
+import matchdog.fibsboard.FibsBoard;
 
 import java.io.FileWriter;
 import java.io.IOException;

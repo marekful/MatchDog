@@ -41,7 +41,7 @@ public class FibsRunner extends Thread {
 	boolean init, run, loggedIn, dead, outOK, resendlastboard;
 
 	// used in processGamePlay
-	boolean wOppMoveBoard, wOppDoubleBoard, wOppRollBoard, wRollBoard, wMoveBoard, wCantMoveBoard, wResumeBoard;
+	boolean wOppMoveBoard, wOppDoubleBoard, wOppRollBoard, wRollBoard, wMoveBoard, wResumeBoard;
 	boolean ownDoubleInProgress, wScoreBoard, wToggle, resume, wasResumed;
 
 	// Fibs message types from 1 to 20 (0 doesn't count) to process 
@@ -124,7 +124,6 @@ public class FibsRunner extends Thread {
 		wRollBoard = false;
 		wResumeBoard = false;
 		wMoveBoard = false;
-		wCantMoveBoard = false;
 		ownDoubleInProgress = false;
 		resume = false;
 		wasResumed = false;
@@ -563,7 +562,7 @@ public class FibsRunner extends Thread {
 			}
 			if(resendlastboard) {
 				resendlastboard = false;
-				server.bgRunner.execBoard(in);
+				server.gnubg.execBoard(in);
 			}
 		}
 	
@@ -884,7 +883,7 @@ public class FibsRunner extends Thread {
             }
 	
 		}
-/*		if(in.startsWith("5 " + resumeopp) && getResumeRating) {
+		/*if(in.startsWith("5 " + resumeopp) && getResumeRating) {
 			getResumeRating = false;
 			sleepFibs(300);
 			server.fibsout.println("join " + resumeopp);
@@ -1006,6 +1005,65 @@ public class FibsRunner extends Thread {
 	private boolean oppIsMatchDog() {
 		return match != null && match.getOppClient() != null
 				&& match.getOppClient().equals(server.programPrefs.getPlatform());
+	}
+
+	private boolean maybeResign(FibsBoard inputBoard) {
+
+		if (match.getMl() == 1) {
+
+			if (match.equities[0] < 0.005) {
+				server.printDebug("**** RESIGNING 1-ptr match");
+				match.setOwnResignInProgress(true);
+				sleepFibs(200);
+				server.fibsout.println("resign n");
+
+				match.moveHistory.addCommand("resign normal");
+
+				return true;
+			}
+
+		} else {
+
+			if (match.equities[0] < 0.005 && match.equities[3] < 0.03) {
+				if (inputBoard.getIHaveOnBar() == 0) {
+
+					server.printDebug("**** !! RESIGNING NON-1-ptr match -- NORMAL");
+					sleepFibs(200);
+					match.setOwnResignInProgress(true);
+					server.fibsout.println("resign n");
+
+					match.moveHistory.addCommand("resign normal");
+
+					return true;
+				}
+			}
+
+			if (match.equities[0] == 0.0 && match.equities[4] == 1.0) {
+				server.printDebug("**** !!! RESIGNING NON-1-ptr match -- BACKGAMMON");
+				sleepFibs(200);
+				match.setOwnResignInProgress(true);
+				server.fibsout.println("resign b");
+
+				match.moveHistory.addCommand("resign backgammon");
+
+				return true;
+
+			} else if (match.equities[0] == 0.0 && match.equities[3] > 0.99) {
+				server.printDebug("**** !!! RESIGNING NON-1-ptr match -- GAMMON");
+				sleepFibs(200);
+				match.setOwnResignInProgress(true);
+				server.fibsout.println("resign g");
+
+				match.moveHistory.addCommand("resign gammon");
+
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public void onEquitiesParsed() {
+		maybeResign(lastBoard);
 	}
 
 	private synchronized void processGamePlay(String in) {
@@ -1325,6 +1383,9 @@ public class FibsRunner extends Thread {
 			//server.printDebug("in: " + in);
 			server.printDebug("END GAME - OPP resign accepted");
 
+			if (!match.isMyTurn()) {
+				match.moveHistory.addCommand("set turn " + match.getPlayer0());
+			}
 			match.moveHistory.addCommand("accept");
 
 			match.setRound(0);
@@ -1346,6 +1407,9 @@ public class FibsRunner extends Thread {
 			//server.printDebug("in: " + in);
 			server.printDebug("END GAME - MatchDog's resign accepted");
 
+			if (match.isMyTurn()) {
+				match.moveHistory.addCommand("set turn " + match.getPlayer1());
+			}
 			match.moveHistory.addCommand("accept");
 
 			match.setRound(0);
@@ -1420,8 +1484,11 @@ public class FibsRunner extends Thread {
 			match.setOwnResignInProgress(false);
 			server.printDebug("Resignation rejected by opp");
 			wMoveBoard = true;
-			server.bgRunner.execBoard(lastboard);
+			server.gnubg.execBoard(lastboard);
 
+			if (match.isMyTurn()) {
+				match.moveHistory.addCommand("set turn " + match.getPlayer1());
+			}
 			match.moveHistory.addCommand("reject");
 
 			return;
@@ -1456,6 +1523,9 @@ public class FibsRunner extends Thread {
 						+ match.getMl() + "  ]");
 				server.fibsout.println("accept");
 
+				if (!match.isMyTurn()) {
+					match.moveHistory.addCommand("set turn " + match.getPlayer0());
+				}
 				match.moveHistory.addCommand("accept");
 
 				//stopMatch();
@@ -1463,25 +1533,14 @@ public class FibsRunner extends Thread {
 			}
 
 			//// GET EQUITITES before deciding on opp resign attempt
-			server.printDebug("EXTRA get equities -> lastboard: " + lastboard);
+			if (server.gnubg != null) {
+				server.printDebug("EXTRA get equities -> lastboard: " + lastboard);
+				String eqboard = getEquitiesBoard(lastBoard); //-
+				server.printDebug("EXTRA get equities ->   eqboard: " + eqboard);
+				server.gnubg.execEval(eqboard);
+				server.printDebug("EXTRA get equities finished");
+			}
 
-			//-//
-            /*String[] split = lastboard.split(":");
-            split[32] = split[42] == "1" ? "-1" : "1";
-            String eqboard = ""; boolean first = true;
-            for(String s : split) {
-                if(first) first = false;
-                else eqboard += ":";
-                eqboard += s;
-            }*/
-
-            String eqboard = getEquitiesBoard(lastBoard); //-
-
-			server.printDebug("EXTRA get equities ->   eqboard: " + eqboard);
-			server.bgRunner.execEval(eqboard);
-
-			server.printDebug("EXTRA get equities finished");
-			
 			// OPP RESIGN NORMAL
 			if (resignpts == lastBoard.getDoublingCube()) {
 
@@ -1495,6 +1554,9 @@ public class FibsRunner extends Thread {
 					sleepFibs(200);
 					server.fibsout.println("reject");
 
+					if (!match.isMyTurn()) {
+						match.moveHistory.addCommand("set turn " + match.getPlayer0());
+					}
 					match.moveHistory.addCommand("reject");
 
 					return;
@@ -1510,6 +1572,9 @@ public class FibsRunner extends Thread {
 					sleepFibs(200);
 					server.fibsout.println("accept");
 
+					if (!match.isMyTurn()) {
+						match.moveHistory.addCommand("set turn " + match.getPlayer0());
+					}
 					match.moveHistory.addCommand("accept");
 
 					return;
@@ -1528,6 +1593,9 @@ public class FibsRunner extends Thread {
 					sleepFibs(250);
 					server.fibsout.println("reject");
 
+					if (!match.isMyTurn()) {
+						match.moveHistory.addCommand("set turn " + match.getPlayer0());
+					}
 					match.moveHistory.addCommand("reject");
 
 					return;
@@ -1543,6 +1611,9 @@ public class FibsRunner extends Thread {
 					sleepFibs(250);
 					server.fibsout.println("accept");
 
+					if (!match.isMyTurn()) {
+						match.moveHistory.addCommand("set turn " + match.getPlayer0());
+					}
 					match.moveHistory.addCommand("accept");
 
 					return;
@@ -1559,6 +1630,9 @@ public class FibsRunner extends Thread {
 				sleepFibs(250);
 				server.fibsout.println("accept");
 
+				if (!match.isMyTurn()) {
+					match.moveHistory.addCommand("set turn " + match.getPlayer0());
+				}
 				match.moveHistory.addCommand("accept");
 
 				return;
@@ -1628,7 +1702,7 @@ public class FibsRunner extends Thread {
 						match.setTurn(new int[] { 0, 1 });
 					}
 					match.setRound(match.getRound() + 1);
-					server.bgRunner.execBoard(in);
+					server.gnubg.execBoard(in);
 					return;
 				}
 
@@ -1651,95 +1725,26 @@ public class FibsRunner extends Thread {
 						match.moveHistory.addCommand("set dice " + inputBoard.getMyDice().getDie1() + " " + inputBoard.getMyDice().getDie2());
 					}
 
-					//// GET EQUITITES
-					server.bgRunner.execEval(in);
-					
-					//// RESIGN ////					
-					if(match.getMl() == 1) {
-						
-						if(match.equities[0] < 0.005) {
-							server.printDebug("**** RESIGNING 1-ptr match");
-							match.setOwnResignInProgress(true);
-							sleepFibs(200);
-							server.fibsout.println("resign n");
+					if (wasResumed || server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_EXTERNAL) {
+						//// GET EQUITITES
+						server.gnubg.execEval(in);
 
-							match.moveHistory.addCommand("resign normal");
-
+						//// RESIGN ////
+						if (maybeResign(inputBoard)) {
 							return;
 						}
-						
-					} else {
-						
-						if(match.equities[0] < 0.005 && match.equities[3] < 0.03) {
-							if(inputBoard.getIHaveOnBar() == 0) {
-
-								server.printDebug("**** !! RESIGNING NON-1-ptr match -- NORMAL");
-								sleepFibs(200);
-								match.setOwnResignInProgress(true);
-								server.fibsout.println("resign n");
-
-								match.moveHistory.addCommand("resign normal");
-
-								return;
-							}
-						}
-						
-						if(match.equities[0] == 0.0 && match.equities[4] == 1.0) {
-							server.printDebug("**** !!! RESIGNING NON-1-ptr match -- BACKGAMMON");
-							sleepFibs(200);
-							match.setOwnResignInProgress(true);
-							server.fibsout.println("resign b");
-
-							match.moveHistory.addCommand("resign backgammon");
-
-							return;
-							
-						} else if(match.equities[0] == 0.0 && match.equities[3] > 0.99) {
-							server.printDebug("**** !!! RESIGNING NON-1-ptr match -- GAMMON");
-							sleepFibs(200);
-							match.setOwnResignInProgress(true);
-							server.fibsout.println("resign g");
-
-							match.moveHistory.addCommand("resign gammon");
-
-							return;
-						}
-					
-					} //// END: RESIGN ////
+						 //// END: RESIGN ////
+					}
 					
 					wMoveBoard = true;
 					///----->
 					if(inputBoard.getCanMove() > 0) {
 
-						if (match instanceof MatchEx) {
-							match.releaseLockEx = false;
-							((MatchEx)match).hint();
-							synchronized (lockEx) {
-								try {
-									// outOK is true when MatchDog has connected
-									// its output writer to our socket
-									while (match == null || !match.releaseLockEx) {
-										lockEx.wait();
-									}
-								} catch (InterruptedException e) {
-									return;
-								}
-							}
+						if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT && !match.wasResumed) {
+							((MatchEx)match).getHint(MatchEx.HINT_TYPE_ON_MOVE);
+						} else {
+							server.gnubg.execBoard(in);
 						}
-
-						FibsBoard moveBoard  = new FibsBoard(in);
-						server.printDebug(" >> > is SHIFT move: " + match.isShiftmove());
-						server.printDebug(" >> > is dblBrd.dir: " + moveBoard.getDirection());
-						server.printDebug(" >> > is dblBrd.clr: " + moveBoard.getColour());
-						server.printDebug(" >> > is dblBrd.trn: " + moveBoard.getTurn());
-						if (moveBoard.getDirection() == 1 && moveBoard.getColour() == -1 && moveBoard.getTurn() == -1) {
-							server.printDebug("REVERSING -dir-clr- for move-board");
-							server.printDebug("  orig: " + in);
-							moveBoard.setColour(moveBoard.getColour() == 1 ? -1 : 1);
-							moveBoard.setDirection(moveBoard.getDirection() == 1 ? -1 : 1);
-							server.printDebug("revved: " + moveBoard.toString());
-						}
-						server.bgRunner.execBoard(moveBoard.toString());
 					}
 					///<------
 					return;
@@ -1758,19 +1763,16 @@ public class FibsRunner extends Thread {
 
 				//// I CAN'T MOVE
 				if (in.startsWith("You can't move")) {
-					wCantMoveBoard = true;
-
 					match.touchStamps();
 					match.setTurn(new int[] { 0, 1 });
 					match.setRound(match.getRound() + 1);
 
 					match.moveHistory.addCommand("set turn " + match.getPlayer1());
-					return;
-				} else if (inputHasBoard && wCantMoveBoard) {
-					wCantMoveBoard = false;
-					boardPrinter.printBoard(inputGetBoard(in));
+
+					boardPrinter.printBoard(lastBoard);
 					printMatchInfo();
 
+					return;
 				}
 
 				//// I DOUBELE
@@ -1820,12 +1822,7 @@ public class FibsRunner extends Thread {
                     //--->
                     String[] oppMoveSplit = in.split(match.getPlayer1() + " moves ");
                     String move = oppMoveSplit[1].replace(".", "").trim();
-
-                    /*server.printDebug(" >>dir > " + lastBoard.getDirection());
-                    server.printDebug(" >>move > " + move);
-                    server.printDebug(" >>shftd> " + GnubgCommand.shift(move));*/
-
-                    if (/*!match.isShiftmove() && */lastBoard.getDirection() == -1) {
+                    if (lastBoard.getDirection() == -1) {
 						move = GnubgCommand.shift(move);
 					}
                     match.moveHistory.addCommand(GnubgCommand.fibsToGnubgCommand(move));
@@ -1909,23 +1906,14 @@ public class FibsRunner extends Thread {
 								+ (match.getCrawfordscore() > -1 ? " crawford-score: " + match.getCrawfordscore() : "")
 								+ "]");
 
-						///------> roll--board (roll or double)
-						FibsBoard rollBoard = new FibsBoard(in);
-						server.printDebug(" >rol> > is SHIFT move: " + match.isShiftmove());
-						server.printDebug(" >rol> > is dblBrd.dir: " + rollBoard.getDirection());
-						server.printDebug(" >rol> > is dblBrd.clr: " + rollBoard.getColour());
-						server.printDebug(" >rol> > is dblBrd.trn: " + rollBoard.getTurn());
-						if ((rollBoard.getTurn() == -1 && rollBoard.getColour() == 1) ||
-							(rollBoard.getDirection() == 1 && rollBoard.getTurn() == -1 && rollBoard.getColour() == -1)) {
-							server.printDebug("REVERSING -dir-clr- for roll-board");
-							server.printDebug("  orig: " + in);
-							rollBoard.setColour(rollBoard.getColour() == 1 ? -1 : 1);
-							rollBoard.setDirection(rollBoard.getDirection() == 1 ? -1 : 1);
-							server.printDebug("revved: " + rollBoard.toString());
-						}
-						server.bgRunner.execBoard(rollBoard.toString());
-						///<------
+						if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT && !match.wasResumed) {
+							((MatchEx) match).getHint(MatchEx.HINT_TYPE_ON_ROLL);
+						} else {
 
+							///------> roll--board (roll or double)
+							server.gnubg.execBoard(in);
+							///<------
+						}
 
 					} else {
 						server.printDebug("NOT sending. [candouble: "
@@ -1982,53 +1970,39 @@ public class FibsRunner extends Thread {
 					server.printDebug("got OPP double board, sending to bgsocket");
 					wOppDoubleBoard = false;
 
+					if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT && !match.wasResumed) {
+						((MatchEx) match).getHint(MatchEx.HINT_TYPE_ON_DOUBLE);
+					} else {
 
-					//-//server.bgRunner.execBoard(in);
+						//-//server.bgRunner.execBoard(in);
 
-					/*
-					 * There has been a fair amount of confusion about
-					 * when to swap sides mid-game before doing an eval
-					 * or rollout. Examining gnubg sources and looking at
-					 * how many times and from where swapSides() is called
-					 * and on what conditions and how these change between
-					 * different revisions reveals some insight into this.
-					 * See also https://savannah.gnu.org/bugs/?36485
-					 *
-					 * With gnubg version 1.06.002 (as compared to 1.05.002),
-					 * I observed incorrect responses to opp's double which were
-					 * consistent with a swapped side board command.
-					 * This is a largely untested fix attempt based on a
-					 * handful of observations and the output of the Perl
-					 * test script on the Savannah page (which strangely
-					 * produces the same errors for both tested versions
-					 * so I wonder what was fixed when... :))
-					 *
-					 * Anyways, gnubg "internally" obviously always handles this
-					 * correctly, the problem only surfaces when input is via
-					 * the external interface (i.e. fibsboard).
-					 *
-					 * */
-					///-----> double--board (take or drop)
-					FibsBoard dblBoard = new FibsBoard(in);
-					server.printDebug(" >dbl> > is SHIFT move: " + match.isShiftmove());
-					server.printDebug(" >dbl> > is dblBrd.dir: " + dblBoard.getDirection());
-					server.printDebug(" >dbl> > is dblBrd.clr: " + dblBoard.getColour());
-					server.printDebug(" >dbl> > is dblBrd.trn: " + dblBoard.getTurn());
-					/*if (dblBoard.getDirection() == 1) {
-						server.printDebug("REVERSING direction for double-board");
-						server.printDebug("  orig: " + in);
-						dblBoard.setDirection(-1);
-						server.printDebug("revved: " + dblBoard.toString());
-					}*/
-					if (dblBoard.getTurn() == -1 && dblBoard.getColour() == 1) {
-						server.printDebug("REVERSING -dir-clr- for double-board");
-						server.printDebug("  orig: " + in);
-						dblBoard.setColour(dblBoard.getColour() == 1 ? -1 : 1);
-						dblBoard.setDirection(dblBoard.getDirection() == 1 ? -1 : 1);
-						server.printDebug("revved: " + dblBoard.toString());
+						/*
+						 * There has been a fair amount of confusion about
+						 * when to swap sides mid-game before doing an eval
+						 * or rollout. Examining gnubg sources and looking at
+						 * how many times and from where swapSides() is called
+						 * and on what conditions and how these change between
+						 * different revisions reveals some insight into this.
+						 * See also https://savannah.gnu.org/bugs/?36485
+						 *
+						 * With gnubg version 1.06.002 (as compared to 1.05.002),
+						 * I observed incorrect responses to opp's double which were
+						 * consistent with a swapped side board command.
+						 * This is a largely untested fix attempt based on a
+						 * handful of observations and the output of the Perl
+						 * test script on the Savannah page (which strangely
+						 * produces the same errors for both tested versions
+						 * so I wonder what was fixed when... :))
+						 *
+						 * Anyways, gnubg "internally" obviously always handles this
+						 * correctly, the problem only surfaces when input is via
+						 * the external interface (i.e. fibsboard).
+						 *
+						 * */
+						///-----> double--board (take or drop)
+						server.gnubg.execBoard(in);
+						///<-----
 					}
-					server.bgRunner.execBoard(dblBoard.toString());
-					///<-----
 				}
 			}
 		} //// END: PROCESS TURN
@@ -2089,11 +2063,25 @@ public class FibsRunner extends Thread {
 		try {
 	
 			int ml = Integer.parseInt(mlstr);
-			this.match = new Match(server, oppname, ml);
+			//this.match = new MatchEx(server, oppname, ml);
+			if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_EXTERNAL) {
+				this.match = new Match(server, oppname, ml);
+			} else if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT) {
+				this.match = new MatchEx(server, oppname, ml);
+			} else {
+				throw new RuntimeException("Unknown gnubg type");
+			}
+
 			server.matchCount++;
 			server.setFibsMode(2);
 
-			server.bgRunner.startGnubgExternal();
+			if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT && resume) {
+				server.initBGRunner();
+			}
+
+			if (server.gnubg != null) {
+				server.gnubg.startExternal();
+			}
 
 			//while (!server.bgsocket.run) {}
 	
@@ -2111,8 +2099,8 @@ public class FibsRunner extends Thread {
 
 	private void stopMatch() {
 
-		if (server.bgRunner != null) {
-			server.bgRunner.killGnubg(match.isDropped());
+		if (server.gnubg != null) {
+			server.gnubg.kill(match.isDropped());
 		}
 
         match.setFinished(true);

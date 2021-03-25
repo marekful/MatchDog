@@ -10,13 +10,13 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
 
-public class BGRunner  {
+public class Gnubg {
 
     // gnubg process
 	private Process p;
 	private long pid;
 	private final String[] gnubgCommands;
-	private final MatchDog server;
+	protected final MatchDog server;
 
 	private String[] fixedArgs;
 
@@ -33,9 +33,9 @@ public class BGRunner  {
     final BufferedConsolePrinter eqPrinter;
     final BufferedConsolePrinter printer;
     private boolean connected, evalCmd;
-    private boolean autoFlushProcOut;
+    private boolean verbose;
 
-	BGRunner(MatchDog server, String[] command, String[] fixedArgs) {
+	Gnubg(MatchDog server, String[] command, String[] fixedArgs, boolean verbose) {
 
         // proc
 		p = null;
@@ -49,9 +49,10 @@ public class BGRunner  {
         // sock
         connected = false;
         evalCmd = false;
+        this.verbose = verbose;
 
         matchPrinter = new DefaultPrinter(
-            server, "gnubg:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_BLUE
+            server, "gnubg-ext:", UnixConsole.LIGHT_WHITE, UnixConsole.BACKGROUND_BLUE
         );
         eqPrinter = new DefaultPrinter(
             server, "Equities:", UnixConsole.LIGHT_YELLOW, UnixConsole.BACKGROUND_BLACK
@@ -66,24 +67,36 @@ public class BGRunner  {
         return pid;
     }
 
+    protected Process createWithCommand(String command) throws IOException {
+	    return Runtime.getRuntime().exec(command);
+    }
+
     // proc
-	public boolean launch(String extraArgs, boolean waitFor) {
+	private boolean execute(String extraArgs, boolean waitFor) {
 
 	    String command;
 	    for (String cmd : gnubgCommands) {
 
 	        command = cmd + " " + String.join(" ", fixedArgs) + " " + extraArgs;
-            printer.printLine("Trying to launch gnubg binary");
+            if (verbose) {
+                printer.printLine("Trying to launch gnubg binary");
+            }
 
             try {
-                p = Runtime.getRuntime().exec(command);
+                p = createWithCommand(command);
                 pid = p.pid();
 
-                printer.setLabel( printer.getLabel() + "[pid=" + pid + "]:")
-                       .printLine("gnubg running (" + command + ")");
+                printer.setLabel( printer.getLabel() + "[pid=" + pid + "]:");
+                if (verbose) {
+                    printer.printLine("gnubg running (" + command + ")");
+                }
+
                 break;
             } catch (Exception e) {
-                printer.printLine("gnubg not fouAnd at: " + command);
+                if (verbose) {
+                    printer.printLine("gnubg not found at: " + command);
+                }
+                //e.printStackTrace();
             }
         }
 
@@ -106,7 +119,7 @@ public class BGRunner  {
         return true;
     }
 
-    public void setup(boolean external, boolean processReply) {
+    protected void setup(boolean external, boolean processReply) {
 
         int chequerPlayPly = server.prefs.getCheckquerply();
         int cubeDecisionPly = server.prefs.getCubedecply();
@@ -142,9 +155,7 @@ public class BGRunner  {
 
         println("relational setup SQLite-database=" + server.getPlayerName(), processReply);
 
-        printer.printLine("");
         println("show evaluation");
-        printer.printLine("");
         println("show rollout");
 
         if (external) {
@@ -152,7 +163,7 @@ public class BGRunner  {
         }
 	}
 
-	public void killGnubg(boolean force) {
+	public void kill(boolean force) {
 
         if (sIn != null) {
             closeSocket();
@@ -174,24 +185,24 @@ public class BGRunner  {
         p = null;
 	}
 
-    public boolean startGnubg(String extraArgs, boolean waitFor) {
+    public boolean start(String extraArgs, boolean waitFor) {
         if (p != null && p.isAlive()) {
            return false;
         }
 
-        if (!launch(extraArgs, waitFor)) {
+        if (!execute(extraArgs, waitFor)) {
             throw new RuntimeException("Cannot launch gnubg binary");
         }
         setup(false, !waitFor);
         return true;
     }
 
-    public void startGnubgExternal() {
+    public void startExternal() {
         if (p != null && p.isAlive()) {
-            killGnubg(true);
+            kill(true);
         }
 
-        if (!launch("", false)) {
+        if (!execute("", false)) {
             throw new RuntimeException("Cannot launch gnubg binary");
         }
 
@@ -199,12 +210,12 @@ public class BGRunner  {
         connectSocket();
     }
 
-    public void restartGnubg() {
+    public void restart() {
         try {
             Thread.sleep(150);
-            killGnubg(true);
+            kill(true);
             Thread.sleep(150);
-            if (!launch("", false)) {
+            if (!execute("", false)) {
                 server.stopServer();
                 return;
             }
@@ -271,7 +282,7 @@ public class BGRunner  {
         }
     }
 
-    protected void processInput() {
+    protected synchronized void processInput() {
         try {
             while((pIn.ready())) {
                 printer.printLine(pIn.readLine());
@@ -313,7 +324,7 @@ public class BGRunner  {
             }
         } catch (RuntimeException e) {
             server.systemPrinter.printLine("Restarting gnubg now");
-            restartGnubg();
+            restart();
         }
     }
 

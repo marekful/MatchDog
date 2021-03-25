@@ -19,7 +19,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, 
     String dataDir;
     long pid;
 
-	BGRunner bgRunner;
+	Gnubg gnubg;
 	FibsRunner fibs;
 	OutputStream gnubgos;
 	PrintWriter gnubgout;
@@ -77,7 +77,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, 
         this.configDir = configDir;
         this.dataDir = dataDir;
 		
-		bgRunner = null;
+		gnubg = null;
 		fibs = null;
 		gnubgos = null;
 		gnubgout = null;
@@ -133,6 +133,11 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, 
                 .setLabel("system[pid=" + pid + "]:");
     }
 
+    public void initBGRunner() {
+        String[] fixedArgs = {"-t", "-q", "-s", configDir + "gnubg", "-D", dataDir + "gnubg"};
+        gnubg = new Gnubg(this, programPrefs.getGnubgCmdArr(), fixedArgs, true);
+    }
+
     public void run() {
 	
 		pstatspath = prefs.username + ".pstats";
@@ -143,9 +148,10 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, 
 				setFibsMode(3);
 			} else {
 
-			    String[] fixedArgs = {"-t", "-q", "-s", configDir + "gnubg", "-D", dataDir + "gnubg"};
-                bgRunner = new BGRunner(this, programPrefs.getGnubgCmdArr(), fixedArgs);
-				
+			    if (prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_EXTERNAL) {
+                    initBGRunner();
+                }
+
 				initPlayerStats();
 				statview = new StatWriter(this);
 				
@@ -304,17 +310,17 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, 
                 }
 
                 if (line.equals("2")) {
-                    writer = bgRunner.getProcOut();
+                    writer = gnubg.getProcOut();
                     outputName = "gnubgout";
                 } else if (line.equals("1")) {
                     writer = fibsout;
                     outputName = "fibsout";
                 } else if (line.equals("6")) {
-                    writer = bgRunner.getScokOut();
+                    writer = gnubg.getScokOut();
                     outputName = "bgsocket.out";
                 } else if (line.equals("8")) {
                     if (fibs.lastboard != null) {
-                        bgRunner.execBoard(fibs.lastboard.trim());
+                        gnubg.execBoard(fibs.lastboard.trim());
                     }
                     continue;
                 } else if (line.equals("16")) {
@@ -347,13 +353,32 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, 
                         statview.dumpPlayerStats(line.split(" ")[1], 3);
                     leaveShell(out);
                     continue;
-                } else if (line.equals("111")) {
-                    out.print(Arrays.stream(prefs.showPrefs()).sequential());
-                    out.println();
-                    leaveShell(out);
-                    continue;
                 } else if (line.equals("88")) {
                     resendLastBoard();
+                    leaveShell(out);
+                    continue;
+                }  else if (line.equals("111")) {
+                    if (fibs.match != null && !fibs.match.wasResumed() &&
+                            prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT)
+                    {
+                        ((MatchEx)fibs.match).getHint(MatchEx.HINT_TYPE_ON_MOVE);
+                    }
+                    leaveShell(out);
+                    continue;
+                }   else if (line.equals("112")) {
+                    if (fibs.match != null && !fibs.match.wasResumed() &&
+                            prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT)
+                    {
+                        ((MatchEx)fibs.match).getHint(MatchEx.HINT_TYPE_ON_ROLL);
+                    }
+                    leaveShell(out);
+                    continue;
+                }   else if (line.equals("113")) {
+                    if (fibs.match != null && !fibs.match.wasResumed() &&
+                            prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT)
+                    {
+                        ((MatchEx)fibs.match).getHint(MatchEx.HINT_TYPE_ON_DOUBLE);
+                    }
                     leaveShell(out);
                     continue;
                 } else if (line.equals("31")) {
@@ -406,8 +431,8 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, 
                     leaveShell(out);
                     continue;
                 } else if (line.equals("44")) {
-                    bgRunner.closeSocket();
-                    Runtime.getRuntime().exec("kill -SIGINT " + bgRunner.getPid());
+                    gnubg.closeSocket();
+                    Runtime.getRuntime().exec("kill -SIGINT " + gnubg.getPid());
                     leaveShell(out);
                     continue;
                 } else if (line.equals("55")) {
@@ -424,7 +449,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, 
                     leaveShell(out);
                     unSuspendOutput(out);
                     if (split.length < 2) continue;
-                    bgRunner.startGnubg("-c " + split[1], false);
+                    gnubg.start("-c " + split[1], false);
                     continue;
                 } else if (line.equals("uptime")) {
                     out.print(TimeAgo.fromMs(System.currentTimeMillis() - serverStartedAt.getTime()));
@@ -558,10 +583,10 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, 
 	}
 
 	protected void stopGnubg() {
-		if(bgRunner == null)
+		if(gnubg == null)
 			return;
-		bgRunner.killGnubg(false);
-		bgRunner = null;
+		gnubg.kill(false);
+		gnubg = null;
         systemPrinter.printLine("Gnubg terminated");
 	}
 
@@ -577,7 +602,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, 
 		fibsout.println("b");
 		printer.printLine("Resending last board: " + fibs.lastboard);
 		fibs.sleepFibs(600);
-		bgRunner.execBoard(fibs.lastboard.trim());
+		gnubg.execBoard(fibs.lastboard.trim());
 	}
 
 	protected void initPlayerStats() {

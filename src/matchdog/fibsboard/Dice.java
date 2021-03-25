@@ -16,4 +16,26 @@ public class Dice {
     public int getDie2() {
         return die2;
     }
+
+    public int getSmaller() {
+        if (die1 == die2) {
+            return die1;
+        }
+        return Math.min(die1, die2);
+    }
+
+    public int getGreater() {
+        if (die1 == die2) {
+            return die1;
+        }
+        return Math.max(die1, die2);
+    }
+
+    public boolean notDouble() {
+        return die1 != die2;
+    }
+
+    public boolean isDouble() {
+        return die1 == die2;
+    }
 }
