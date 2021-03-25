@@ -17,12 +17,17 @@ public class MatchEx extends Match {
     private final static Pattern multiMove = Pattern.compile("(\\s|^)([^\\s]+)\\((\\d+)\\)");
     private final static Pattern tripletMove = Pattern.compile("(\\d+|bar)\\*?/(\\d+)\\*?/(\\d+|off)\\*?");
 
+    private final static Pattern positionId = Pattern.compile("Position ID\\s*: ([^\\s]+)[\\s\\n]");
+    private final static Pattern matchId = Pattern.compile("Match ID\\s*: ([^\\s]+)[\\s\\n]");
+
     private final static Pattern onMove = Pattern.compile("^\\s+1\\.\\s+Cubeful\\s+\\d-ply\\s+(.*?)\\s+Eq.*$", Pattern.MULTILINE);
     private final static Pattern onRollRoll = Pattern.compile("Proper cube action: (No|Too good to) (re)?double,", Pattern.MULTILINE);
     private final static Pattern onRollDouble = Pattern.compile("Proper cube action: (Optional )?(Red|D)ouble,", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
     private final static Pattern onDoubleTake = Pattern.compile("Proper cube action: [^,]+, take", Pattern.MULTILINE);
     private final static Pattern onDoubleDrop = Pattern.compile("Proper cube action: [^,]+, pass", Pattern.MULTILINE);
+
     private final static Pattern onMoveEquities = Pattern.compile("\\s+1\\.\\s+Cubeful\\s+\\d-ply\\s+[^\\n]+\\n\\s+([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\s+-\\s+[\\d.]+\\s+([\\d.]+)\\s+([\\d.]+)", Pattern.DOTALL);
+    private final static Pattern onRollEquities = Pattern.compile("\\s*\\d-ply cube(ful|less) equity -?[\\d.]+[^\\n]+\\n\\s+([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\s+-\\s+[\\d.]+\\s+([\\d.]+)\\s+([\\d.]+)", Pattern.DOTALL);
 
     public final static int HINT_TYPE_ON_MOVE = 0;
     public final static int HINT_TYPE_ON_ROLL = 1;
@@ -32,6 +37,9 @@ public class MatchEx extends Match {
     String hint;
     BufferedConsolePrinter eqPrinter;
 
+    private String gnubgMatchId;
+    private String gnubgPositionId;
+
     MatchEx(MatchDog server, String oppname, int matchlength) {
         super(server, oppname, matchlength);
 
@@ -39,10 +47,6 @@ public class MatchEx extends Match {
             server, "Equities:", UnixConsole.LIGHT_YELLOW, UnixConsole.BACKGROUND_BLACK
         );
     }
-
-    /*public void sendCommand(String command) {
-        r.sendCommand(command);
-    }*/
 
     public void onMatchEnd() {
         super.onMatchEnd();
@@ -54,7 +58,12 @@ public class MatchEx extends Match {
     }
 
     public void getHint(int hintType) {
-        (new Thread(new Runner(hintType))).start();
+        try {
+            (new Thread(new Runner(hintType))).start();
+        } catch (RuntimeException ex) {
+            server.printDebug("Retrying hint (type: " + hintType + ")");
+            (new Thread(new Runner(hintType))).start();
+        }
     }
 
     public String hint() {
@@ -80,12 +89,14 @@ public class MatchEx extends Match {
 
             try {
                 getMatchHistory().writeToTempFile();
+                getMatchHistory().writePositionToFile();
             } catch (IOException e) {
                 bg.printer.printLine("Error writing temp file");
                 return;
             }
 
-            String extraArgs = "-c " + getMatchHistory().getTempFileName() + ".tmp";
+            //String extraArgs = "-c " + getMatchHistory().getTempFileName() + ".tmp";
+            String extraArgs = "-c " + getMatchHistory().getPosFileName() + ".pos.tmp";
             bg.start(extraArgs, true);
 
             try {
@@ -99,18 +110,34 @@ public class MatchEx extends Match {
                 return;
             }
 
+            Matcher mId = matchId.matcher(content);
+            Matcher pId = positionId.matcher(content);
+            String matchId = null, posId = null;
+            while (mId.find()) {
+                matchId = mId.group(1);
+            }
+            while (pId.find()) {
+                posId = pId.group(1);
+            }
+            if (matchId != null && posId != null) {
+                setGnubgMatchId(matchId);
+                setGnubgPositionId(posId);
+                bg.printer.printLine(getGnubgId());
+                onNewGnubgId();
+            }
+
             switch (hintType) {
                 case HINT_TYPE_ON_MOVE -> {
                     Matcher m1 = onMove.matcher(content);
                     Matcher m0 = onMoveEquities.matcher(content);
 
                     if (m0.find()) {
-                        bg.printer.printLine("");
                         for (int e = 1; e < 6; e++) {
                             equities[e-1] = Double.parseDouble(m0.group(e));
-                            server.printDebug("EQ: " + e + " " + m0.group(e) + " " + Double.parseDouble(m0.group(e)) + " " + equities[e-1]);
+                            //server.printDebug("EQ: " + e + " " + m0.group(e) + " " + Double.parseDouble(m0.group(e)) + " " + equities[e-1]);
                         }
-                        equities[5] = 0.0; // cubeless equities not given here, but it's not used anyway
+                        //equities[5] = 0.0; // cubeless equities not given here, but it's not used anyway
+                        bg.printer.printLine("");
                         printEquities();
                         server.fibs.onEquitiesParsed();
                     } else {
@@ -119,17 +146,19 @@ public class MatchEx extends Match {
 
                     if (m1.find()) {
                         String cmd = transformCommand(m1.group(1));
-                        bg.printer.printLine("");
                         server.fibsout.println(cmd);
-                        server.fibs.printFibsCommand(cmd);
+                        bg.printer.printLine("");
+                        server.fibs.printFibsCommand(m1.group(1) + " -> " + cmd);
                         getMatchHistory().addCommand(m1.group(1));
                     } else {
                         bg.printer.printLine("! NO HINT RESULT");
+                        throw new RuntimeException("No hing on move");
                     }
                 }
                 case HINT_TYPE_ON_ROLL -> {
                     Matcher m2 = onRollRoll.matcher(content);
                     Matcher m3 = onRollDouble.matcher(content);
+                    Matcher m6 = onRollEquities.matcher(content);
                     if (m2.find()) {
                         server.fibsout.println("roll");
                         bg.printer.printLine("");
@@ -140,6 +169,19 @@ public class MatchEx extends Match {
                         server.fibs.printFibsCommand("double");
                     } else {
                         bg.printer.printLine("! NO HINT RESULT");
+                        throw new RuntimeException("No hing on roll");
+                    }
+
+                    if (m6.find()) {
+                        for (int e = 1; e < 6; e++) {
+                            try {
+                                equities[e-1] = Double.parseDouble(m6.group(e+1));
+                            } catch (NumberFormatException ex) {
+                                server.printDebug("NFEx parse eq on roll: " + e + " 1> " + m6.group(1) + " 0> " + m6.group(0) + " -> " + ex.getMessage());
+                            }
+                        }
+                        bg.printer.printLine("On roll");
+                        printEquities();
                     }
                 }
                 case HINT_TYPE_ON_DOUBLE -> {
@@ -156,52 +198,53 @@ public class MatchEx extends Match {
                         getMatchHistory().addCommand("reject");
                     } else {
                         bg.printer.printLine("! NO HINT RESULT");
+                        throw new RuntimeException("No hing on double");
                     }
                 }
             }
         }
+    }
 
-        private String orderMoves(String in) {
-            ArrayList<String> bar = new ArrayList<>();
-            ArrayList<String> other = new ArrayList<>();
-            ArrayList<String> off = new ArrayList<>();
-            String[] moves = in.split(" ");
+    private String orderMoves(String in) {
+        ArrayList<String> bar = new ArrayList<>();
+        ArrayList<String> other = new ArrayList<>();
+        ArrayList<String> off = new ArrayList<>();
+        String[] moves = in.split(" ");
 
-            for (String m : moves) {
-                if (m.startsWith("bar-")) {
-                    bar.add(m);
-                } else if (m.endsWith("-off")) {
-                    off.add(m);
-                } else {
-                    other.add(m);
-                }
+        for (String m : moves) {
+            if (m.startsWith("bar-")) {
+                bar.add(m);
+            } else if (m.endsWith("-off")) {
+                off.add(m);
+            } else {
+                other.add(m);
             }
-
-            return  String.join(" ", bar) + " " +
-                    String.join(" ", other) + " " +
-                    String.join(" ", off);
         }
 
-        private String transformCommand(String in) {
+        return  String.join(" ", bar) + " " +
+                String.join(" ", other) + " " +
+                String.join(" ", off).trim();
+    }
 
-            server.printDebug("transformCommand 0: " + in);
-            String out = expandGnubgMoveHint(in, 1);
-            server.printDebug("transformCommand 1: " + out);
-            out = GnubgCommand.gnubgToFibsCommand(out);
-            server.printDebug("transformCommand 2: " + out);
-            out = orderMoves(out);
-            server.printDebug("transformCommand 3: " + out);
+    public String transformCommand(String in) {
 
-            if(out.contains("-")) {
+        server.printDebug("transformCommand 0: " + in);
+        String out = expandGnubgMoveHint(in, 1);
+        server.printDebug("transformCommand 1: " + out);
+        out = GnubgCommand.gnubgToFibsCommand(out);
+        server.printDebug("transformCommand 2: " + out);
+        out = orderMoves(out);
+        server.printDebug("transformCommand 3: " + out);
 
-                if(isShiftmove()) {
-                    bg.printer.printLine("SHIFTING");
-                    out = GnubgCommand.shift(out);
-                }
-                out = "move " + out;
+        if(out.contains("-")) {
+
+            if(isShiftmove()) {
+                server.printer.printLine("SHIFTING");
+                out = GnubgCommand.shift(out);
             }
-            return out;
+            out = "move " + out;
         }
+        return out;
     }
 
     public String expandGnubgMoveHint(String command, int pass) {
@@ -218,11 +261,12 @@ public class MatchEx extends Match {
             return expandGnubgMoveHint(tm.replaceAll("$1/$2 $2/$3"),1);
         }
 
-        // skip to pass two
+        // no multi-move to expand, skip to pass two
         if (pass == 1 && !command.contains("(")) {
             return expandGnubgMoveHint(command, 2);
         }
 
+        // PASS ONE - EXPAND MULTI-MOVES
         String[] in = command.split(" ");
         String[] out = command.split(" ");
         String part;
@@ -260,12 +304,13 @@ public class MatchEx extends Match {
             return expandGnubgMoveHint(String.join(" ", out), 2);
         }
 
+        // PASS TWO - EXPAND COLLAPSED MOVES + other bits
         int m = 0, n = 0;
         String[] split;
         String[] state = server.fibs.lastBoard.getBoard().getState();
         int myColour = server.fibs.lastBoard.getColour();
-        int middleMove;
-        int pieces, stateIndex;
+        int middleMove, movedSoFar = 0;
+        int pieces, stateIndex = -1;
         for (int i = 0; i < out.length; i++) {
             part = out[i];
             split = part.split("/");
@@ -280,13 +325,12 @@ public class MatchEx extends Match {
             }
             boolean forward = m < n;
 
-            // expand m/n when m+n = die1 + die2, this covers
+            // expand m/n when abs(m-n) = die1 + die2, this covers
             // - two different die (not double) in one move
             // - both parts of a double X X when both chequers moved X then X
-            if (myDice.getDie1() + myDice.getDie2() == Math.abs(m - n)) {
-                // when expanding two different die in one move
-                // there may be only one possible order, e.g. for dice X Y
-                // only X then Y (and not Y then X) is valid
+            if ( myDice.getDie1() + myDice.getDie2() == Math.abs(m - n) /*||
+                (myDice.getDie1() + myDice.getDie2() - movedSoFar  > Math.abs(m - n) && n == 0)*/) {
+
                 if (myDice.isDouble()) {
                     if (forward) {
                         middleMove = m + myDice.getDie1();
@@ -294,12 +338,17 @@ public class MatchEx extends Match {
                         middleMove = m - myDice.getDie1();
                     }
                 } else {
+                    // when expanding two different die in one move
+                    // there may be only one possible order, e.g. for dice X Y
+                    // only X then Y (and not Y then X) is valid
                     middleMove = -1;
                     try {
+                        // check if one of the two available middle
+                        // positions are blocked and select the other if so
                         if (forward) {
                             stateIndex = isShiftmove() ? 25 - (m + myDice.getSmaller()) : (m + myDice.getSmaller());
                             pieces = Integer.parseInt(state[stateIndex]);
-                            server.printDebug("chk-move: forward - " + myColour + " - " + pieces + " - " + m + " - " + myDice.getSmaller());
+                            server.printDebug("chk-move: forward -> " + myColour + " - " + pieces + " - " + m + " - " + myDice.getSmaller());
                             if (pieces == 0 || (pieces < 0 && myColour < 0) || (pieces > 0 && myColour > 0)) {
                                 middleMove = m + myDice.getSmaller();
                             } else {
@@ -308,7 +357,7 @@ public class MatchEx extends Match {
                         } else {
                             stateIndex = isShiftmove() ? 25 - (m - myDice.getSmaller()) : (m - myDice.getSmaller());
                             pieces = Integer.parseInt(state[stateIndex]);
-                            server.printDebug("chk-move: backward - " + myColour + " - " + pieces + " - " + m + " - " + myDice.getSmaller());
+                            server.printDebug("chk-move: backward -> " + myColour + " - " + pieces + " - " + m + " - " + myDice.getSmaller());
                             if (pieces == 0 || (pieces < 0 && myColour < 0) || (pieces > 0 && myColour > 0)) {
                                 middleMove = m - myDice.getSmaller();
                             } else {
@@ -316,13 +365,15 @@ public class MatchEx extends Match {
                             }
                         }
                     } catch (NumberFormatException e) {
-                        server.printDebug("NFEx :" + state[m + myDice.getSmaller()]);
+                        server.printDebug("NFEx :" + stateIndex + " -> " + state[stateIndex]);
                     }
                 }
 
-                server.printDebug("1a: |" + out[i] + "|");
+                server.printDebug("2.1a: |" + out[i] + "|");
                 out[i] = m + "/" + middleMove + " " + middleMove + "/" + n;
-                server.printDebug("1b: |" + out[i] + "|");
+                server.printDebug("2.1b: |" + out[i] + "|");
+
+                movedSoFar += Math.abs(m-n);
             }
 
             // expand m/n when abs(m-n) > greater die
@@ -350,9 +401,9 @@ public class MatchEx extends Match {
                     }
                 }
 
-                server.printDebug("2a: |" + out[i] + "|");
+                server.printDebug("2.2a: |" + out[i] + "|");
                 out[i] = newOut.trim();
-                server.printDebug("2b: |" + out[i] + "|");
+                server.printDebug("2.2b: |" + out[i] + "|");
             }
 
             // expand m/n when ... ?
@@ -373,5 +424,32 @@ public class MatchEx extends Match {
             eqStr = eqStr.concat(eqLabel[c++]).concat(value);
         }
         eqPrinter.print(eqStr);
+    }
+
+    protected String getGnubgMatchId() {
+        return gnubgMatchId;
+    }
+
+    protected void setGnubgMatchId(String gnubgMatchId) {
+        this.gnubgMatchId = gnubgMatchId;
+    }
+
+    protected String getGnubgPositionId() {
+        return gnubgPositionId;
+    }
+
+    protected void setGnubgPositionId(String gnubgPositionId) {
+        this.gnubgPositionId = gnubgPositionId;
+    }
+
+    protected String getGnubgId() {
+        if (getGnubgMatchId() == null || getGnubgPositionId() == null) {
+            return null;
+        }
+        return getGnubgMatchId() + ":" + getGnubgPositionId();
+    }
+
+    protected void onNewGnubgId() {
+        getMatchHistory().clearCommandsSinceLastId();
     }
 }

@@ -23,10 +23,13 @@ public class MatchHistory {
     private final Match match;
     private final Map<Integer, ArrayList<String>> commands;
 
+    private final ArrayList<String> commandsSinceLastId;
+
     private FileWriter writer;
     private FileWriter tmpWriter;
+    private FileWriter posWriter;
 
-    String rand;
+    String rand, posRand;
 
     DefaultPrinter printer;
 
@@ -41,6 +44,7 @@ public class MatchHistory {
         this.writeStrategy = writeStrategy;
 
         commands = new HashMap<>();
+        commandsSinceLastId = new ArrayList<>();
 
         printer = new DefaultPrinter(
             match.server, "MatchHistory", UnixConsole.LIGHT_RED, UnixConsole.BACKGROUND_WHITE
@@ -49,7 +53,7 @@ public class MatchHistory {
         match.server.addPrinter(printer);
 
         this.match = match;
-        initialCommands();
+        addInitialCommands();
     }
 
     private FileWriter getWriter() {
@@ -69,6 +73,11 @@ public class MatchHistory {
         o.delete();
     }
 
+    private void deletePosFile() {
+        File o = new File(getPosFileName() + ".pos.tmp");
+        o.delete();
+    }
+
     private FileWriter getTmpWriter() {
         if (tmpWriter == null) {
             try {
@@ -78,21 +87,46 @@ public class MatchHistory {
                 File f = new File(getTempFileName() + ".tmp");
                 tmpWriter = new FileWriter(f);
             } catch (IOException e) {
-                printer.printLine("Cannot open " + getTempFileName() + " for writing");
+                printer.printLine("Cannot open " + getTempFileName() + ".tmp for writing");
                 return null;
             }
         }
         return tmpWriter;
     }
 
-    private void initialCommands() {
-        addCommand("set default " + match.getPlayer0() + " " + match.getPlayer1());
-        addCommand("set player 0 human");
-        addCommand("set player 1 human");
-        addCommand("set automatic game off");
-        addCommand("set automatic roll off");
-        addCommand("set automatic move off\n");
-        addCommand("new match " + match.getMl() + "\n");
+    private FileWriter getPositionWriter() {
+        if (posWriter == null) {
+            try {
+                deletePosFile();
+                posRand = String.format("%.0f", Double.parseDouble(String.valueOf(Math.random())) * 10000);
+
+                File f = new File(getPosFileName() + ".pos.tmp");
+                posWriter = new FileWriter(f);
+            } catch (IOException e) {
+                printer.printLine("Cannot open " + getPosFileName() + ".pos.tmp for writing");
+                return null;
+            }
+        }
+        return posWriter;
+    }
+
+    private ArrayList<String> getInitialCommands() {
+        ArrayList<String> commands = new ArrayList<>();
+        commands.add("set default " + match.getPlayer0() + " " + match.getPlayer1());
+        commands.add("set player 0 human");
+        commands.add("set player 1 human");
+        commands.add("set automatic game off");
+        commands.add("set automatic roll off");
+        commands.add("set automatic move off\n");
+        commands.add("new match " + match.getMl() + "\n");
+        return commands;
+    }
+
+    private void addInitialCommands() {
+
+        for (String command : getInitialCommands()) {
+            addCommand(command);
+        }
     }
 
     private void writeOneLineToFile(String line) {
@@ -109,11 +143,21 @@ public class MatchHistory {
 
     }
 
+    public void clearCommandsSinceLastId() {
+        commandsSinceLastId.clear();
+    }
+
+    public void addCommandSinceLastId(String command) {
+        commandsSinceLastId.add(command);
+    }
+
     public int getWriteStrategy() {
         return writeStrategy;
     }
 
     public void addCommand(String command) {
+
+        addCommandSinceLastId(command);
 
         if (match.wasResumed()) {
             return; // not yet handled for dropped/resumed matches
@@ -157,6 +201,7 @@ public class MatchHistory {
         }
 
         if (addHint) {
+            writer.append("show board").append(System.lineSeparator()).append(System.lineSeparator());
             writer.append("hint").append(System.lineSeparator()).append(System.lineSeparator());
         }
     }
@@ -165,6 +210,37 @@ public class MatchHistory {
         writeToFile(getTmpWriter(), false, true);
         Objects.requireNonNull(getTmpWriter()).flush();
         tmpWriter = null;
+    }
+
+    public void writePositionToFile() throws IOException {
+        FileWriter writer;
+        if ((writer = getPositionWriter()) == null) {
+            return;
+        }
+
+        for (String command : getInitialCommands()) {
+            writer.append(command).append(System.lineSeparator());
+        }
+
+        if (((MatchEx)match).getGnubgMatchId() != null) {
+            writer.append(System.lineSeparator())
+                    .append("set gnubgid ").append(((MatchEx) match).getGnubgId())
+                    .append(System.lineSeparator())
+                    .append(System.lineSeparator());
+        }
+
+        for (String s : commandsSinceLastId) {
+            writer.append(s).append(System.lineSeparator());
+        }
+
+        writer.append(System.lineSeparator())
+                .append("show board").append(System.lineSeparator())
+                .append(System.lineSeparator())
+                .append("hint").append(System.lineSeparator())
+                .append(System.lineSeparator());
+
+        writer.flush();
+        posWriter = null;
     }
 
     public void exportMatchToSgf() {
@@ -191,9 +267,14 @@ public class MatchHistory {
         return dataDir + "matchlogs/" + match.id + "-" + rand;
     }
 
+    public String getPosFileName() {
+        return dataDir + "matchlogs/" + match.id + "-" + posRand;
+    }
+
     public void onMatchEnd() {
 
         deleteTempFile();
+        deletePosFile();
 
         if (!match.wasResumed && (writer = getWriter()) != null) {
             try {

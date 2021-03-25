@@ -5,6 +5,7 @@ import jcons.src.com.meyling.console.UnixConsole;
 import matchdog.console.printer.BufferedConsolePrinter;
 import matchdog.console.printer.DefaultPrinter;
 import matchdog.console.printer.MatchDogPrinter;
+import matchdog.fibsboard.FibsBoard;
 import sun.misc.Signal;
 
 import java.io.*;
@@ -357,28 +358,17 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, 
                     resendLastBoard();
                     leaveShell(out);
                     continue;
-                }  else if (line.equals("111")) {
-                    if (fibs.match != null && !fibs.match.wasResumed() &&
-                            prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT)
-                    {
-                        ((MatchEx)fibs.match).getHint(MatchEx.HINT_TYPE_ON_MOVE);
+                }  else if (line.startsWith("111 ")) {
+                    String[] parts = line.split(" ");
+                    String c = "";
+                    for (int p = 2; p < parts.length; p++) {
+                        c = c.concat(parts[p]).concat(" ");
                     }
-                    leaveShell(out);
-                    continue;
-                }   else if (line.equals("112")) {
-                    if (fibs.match != null && !fibs.match.wasResumed() &&
-                            prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT)
-                    {
-                        ((MatchEx)fibs.match).getHint(MatchEx.HINT_TYPE_ON_ROLL);
-                    }
-                    leaveShell(out);
-                    continue;
-                }   else if (line.equals("113")) {
-                    if (fibs.match != null && !fibs.match.wasResumed() &&
-                            prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT)
-                    {
-                        ((MatchEx)fibs.match).getHint(MatchEx.HINT_TYPE_ON_DOUBLE);
-                    }
+                    if (parts.length < 3) continue;
+                    MatchEx tm = new MatchEx(this, "dummy", 1);
+                    fibs.lastBoard = new FibsBoard(parts[1]);
+                    tm.setMyDice(fibs.lastBoard.getMyDice());
+                    printer.printLine(tm.transformCommand(c));
                     leaveShell(out);
                     continue;
                 } else if (line.equals("31")) {
