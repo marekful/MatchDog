@@ -2,6 +2,9 @@ package matchdog;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Properties;
 
 /**
@@ -23,6 +26,7 @@ public class ProgramPrefs extends Prefs {
 
     public String platform;
     public String version;
+    public ArrayList<String> testUsers = new ArrayList<>();
 
     ProgramPrefs() {
         initPrefs();
@@ -65,5 +69,9 @@ public class ProgramPrefs extends Prefs {
 
     public String getVersion() {
         return version;
+    }
+
+    public ArrayList<String> getTestUsers() {
+        return testUsers;
     }
 }

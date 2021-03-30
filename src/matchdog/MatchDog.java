@@ -5,10 +5,12 @@ import jcons.src.com.meyling.console.UnixConsole;
 import matchdog.console.printer.BufferedConsolePrinter;
 import matchdog.console.printer.DefaultPrinter;
 import matchdog.console.printer.MatchDogPrinter;
+import matchdog.fibsboard.Dice;
 import matchdog.fibsboard.FibsBoard;
 import sun.misc.Signal;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.util.*;
 
 public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, SuspendableOutputPrinter {
@@ -358,6 +360,10 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, 
                     resendLastBoard();
                     leaveShell(out);
                     continue;
+                } else if (line.equals("22")) {
+
+                    leaveShell(out);
+                    continue;
                 }  else if (line.startsWith("111 ")) {
                     String[] parts = line.split(" ");
                     String c = "";
@@ -365,9 +371,8 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, 
                         c = c.concat(parts[p]).concat(" ");
                     }
                     if (parts.length < 3) continue;
-                    MatchEx tm = new MatchEx(this, "dummy", 1);
+                    MatchEx tm = new MatchEx(this, "dummy", 1, false);
                     fibs.lastBoard = new FibsBoard(parts[1]);
-                    tm.setMyDice(fibs.lastBoard.getMyDice());
                     printer.printLine(tm.transformCommand(c));
                     leaveShell(out);
                     continue;
@@ -523,6 +528,10 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, 
             BufferedConsolePrinter.removeOutputBuffer(out);
 		}
 	}
+
+	protected boolean isTestUser(String user) {
+	    return programPrefs.getTestUsers().contains(user);
+    }
 
     protected void stopServer() {
         stopInviter();

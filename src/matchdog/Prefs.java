@@ -1,6 +1,7 @@
 package matchdog;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -28,8 +29,12 @@ public class Prefs {
                     accessType = "arrayString";
                     valueType = "s";
                 }
-                if(valueType.equals("msi")) {
+                else if(valueType.equals("msi")) {
                     accessType = "mapStringInteger";
+                    valueType = "s";
+                }
+                else if(valueType.equals("als")) {
+                    accessType = "arrayListString";
                     valueType = "s";
                 }
 
@@ -61,6 +66,9 @@ public class Prefs {
                     case "arrayString" :
                         String[] s = (String[]) field.get(this);
                         s[serial] = (String)value;
+                        break;
+                    case "arrayListString" :
+                        ((ArrayList<String>) field.get(this)).add((String)value);
                         break;
                     case "mapStringInteger" :
                         Map<String, Integer> m;
