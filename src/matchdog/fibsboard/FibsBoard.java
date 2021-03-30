@@ -1,6 +1,10 @@
 package matchdog.fibsboard;
 
+import matchdog.Match;
+
 import java.util.Arrays;
+import java.util.Base64;
+import java.util.BitSet;
 
 public class FibsBoard {
 
@@ -147,6 +151,11 @@ public class FibsBoard {
 
     public void setTurn(int turn) {
         this.turn = turn;
+    }
+
+    public boolean myDiceAreNotSet() {
+        if (myDice == null) return false;
+        return myDice.getDie1() == 0 && myDice.getDie2() == 0;
     }
 
     public Dice getMyDice() {

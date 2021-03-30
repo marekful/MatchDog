@@ -3,16 +3,26 @@ package matchdog;
 import jcons.src.com.meyling.console.UnixConsole;
 import matchdog.console.printer.BufferedConsolePrinter;
 import matchdog.console.printer.DefaultPrinter;
+import matchdog.fibsboard.Dice;
+import matchdog.fibsboard.FibsBoard;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.BitSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class MatchEx extends Match {
+
+    public final static int HINT_TYPE_ON_MOVE = 0;
+    public final static int HINT_TYPE_ON_ROLL = 1;
+    public final static int HINT_TYPE_ON_DOUBLE = 2;
 
     private final static Pattern multiMove = Pattern.compile("(\\s|^)([^\\s]+)\\((\\d+)\\)");
     private final static Pattern tripletMove = Pattern.compile("(\\d+|bar)\\*?/(\\d+)\\*?/(\\d+|off)\\*?");
@@ -25,23 +35,19 @@ public class MatchEx extends Match {
     private final static Pattern onRollDouble = Pattern.compile("Proper cube action: (Optional )?(Red|D)ouble,", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
     private final static Pattern onDoubleTake = Pattern.compile("Proper cube action: [^,]+, take", Pattern.MULTILINE);
     private final static Pattern onDoubleDrop = Pattern.compile("Proper cube action: [^,]+, pass", Pattern.MULTILINE);
+    private final static Pattern youCannotDouble = Pattern.compile("You cannot double", Pattern.MULTILINE);
 
     private final static Pattern onMoveEquities = Pattern.compile("\\s+1\\.\\s+Cubeful\\s+\\d-ply\\s+[^\\n]+\\n\\s+([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\s+-\\s+[\\d.]+\\s+([\\d.]+)\\s+([\\d.]+)", Pattern.DOTALL);
-    private final static Pattern onRollEquities = Pattern.compile("\\s*\\d-ply cube(ful|less) equity -?[\\d.]+[^\\n]+\\n\\s+([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\s+-\\s+[\\d.]+\\s+([\\d.]+)\\s+([\\d.]+)", Pattern.DOTALL);
+    private final static Pattern onRollEquities = Pattern.compile("\\s*\\d-ply cube(ful|less) equity \\+?-?[\\d.]+[^\\n]+\\n\\s+([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\s+-\\s+[\\d.]+\\s+([\\d.]+)\\s+([\\d.]+)", Pattern.DOTALL);
 
-    public final static int HINT_TYPE_ON_MOVE = 0;
-    public final static int HINT_TYPE_ON_ROLL = 1;
-    public final static int HINT_TYPE_ON_DOUBLE = 2;
-
-    Runner r;
-    String hint;
-    BufferedConsolePrinter eqPrinter;
+    private Runner r;
+    private BufferedConsolePrinter eqPrinter;
 
     private String gnubgMatchId;
     private String gnubgPositionId;
 
-    MatchEx(MatchDog server, String oppname, int matchlength) {
-        super(server, oppname, matchlength);
+    MatchEx(MatchDog server, String oppname, int matchlength, boolean resume) {
+        super(server, oppname, matchlength, resume);
 
         eqPrinter = new DefaultPrinter(
             server, "Equities:", UnixConsole.LIGHT_YELLOW, UnixConsole.BACKGROUND_BLACK
@@ -51,32 +57,39 @@ public class MatchEx extends Match {
     public void onMatchEnd() {
         super.onMatchEnd();
         if (r != null && r.bg != null) {
-            r.bg.kill(false);
+            r.bg.kill(isDropped());
+            r.interrupt();
             r.bg = null;
         }
         r = null;
     }
 
     public void getHint(int hintType) {
-        try {
+        Thread t = new Thread(new Runner(hintType));
+        t.setUncaughtExceptionHandler((th, ex) -> {
+            if (r != null && r.interrupt) {
+                return;
+            }
+            // retry once
+            server.printDebug("Retrying hint (" + ex.getMessage() + ")");
             (new Thread(new Runner(hintType))).start();
-        } catch (RuntimeException ex) {
-            server.printDebug("Retrying hint (type: " + hintType + ")");
-            (new Thread(new Runner(hintType))).start();
-        }
-    }
-
-    public String hint() {
-        return hint;
+        });
+        t.start();
     }
 
     private class Runner implements Runnable {
 
         private Gnubg bg;
         private final int hintType;
+        private boolean interrupt;
 
         Runner(int hintType) {
             this.hintType = hintType;
+            interrupt = false;
+        }
+
+        public void interrupt() {
+            interrupt = true;
         }
 
         @Override
@@ -88,10 +101,14 @@ public class MatchEx extends Match {
             String content;
 
             try {
-                getMatchHistory().writeToTempFile();
+                //getMatchHistory().writeToTempFile();
                 getMatchHistory().writePositionToFile();
             } catch (IOException e) {
                 bg.printer.printLine("Error writing temp file");
+                return;
+            }
+
+            if (interrupt) {
                 return;
             }
 
@@ -110,7 +127,11 @@ public class MatchEx extends Match {
                 return;
             }
 
-            Matcher mId = matchId.matcher(content);
+            if (interrupt) {
+                return;
+            }
+
+            /*Matcher mId = matchId.matcher(content);
             Matcher pId = positionId.matcher(content);
             String matchId = null, posId = null;
             while (mId.find()) {
@@ -124,7 +145,7 @@ public class MatchEx extends Match {
                 setGnubgPositionId(posId);
                 bg.printer.printLine(getGnubgId());
                 onNewGnubgId();
-            }
+            }*/
 
             switch (hintType) {
                 case HINT_TYPE_ON_MOVE -> {
@@ -133,15 +154,18 @@ public class MatchEx extends Match {
 
                     if (m0.find()) {
                         for (int e = 1; e < 6; e++) {
-                            equities[e-1] = Double.parseDouble(m0.group(e));
-                            //server.printDebug("EQ: " + e + " " + m0.group(e) + " " + Double.parseDouble(m0.group(e)) + " " + equities[e-1]);
+                            try {
+                                equities[e - 1] = Double.parseDouble(m0.group(e));
+                            } catch (NumberFormatException ex) {
+                                server.printDebug("NFEx on move equities: " + e + " " + m0.group(e) + " " + Double.parseDouble(m0.group(e)) + " " + equities[e-1]);
+                            }
                         }
-                        //equities[5] = 0.0; // cubeless equities not given here, but it's not used anyway
-                        bg.printer.printLine("");
+                        bg.printer.printLine("On move ");
                         printEquities();
                         server.fibs.onEquitiesParsed();
                     } else {
                         bg.printer.printLine("! NO EQUITIES RESULT");
+                        throw new RuntimeException("No equities on move");
                     }
 
                     if (m1.find()) {
@@ -152,13 +176,16 @@ public class MatchEx extends Match {
                         getMatchHistory().addCommand(m1.group(1));
                     } else {
                         bg.printer.printLine("! NO HINT RESULT");
-                        throw new RuntimeException("No hing on move");
+                        throw new RuntimeException("No hint on move");
                     }
                 }
                 case HINT_TYPE_ON_ROLL -> {
                     Matcher m2 = onRollRoll.matcher(content);
                     Matcher m3 = onRollDouble.matcher(content);
                     Matcher m6 = onRollEquities.matcher(content);
+                    // this should only happen on an incorrect hint request (submit
+                    // an on-roll request when I cannot double) catch it anyway
+                    Matcher m7 = youCannotDouble.matcher(content);
                     if (m2.find()) {
                         server.fibsout.println("roll");
                         bg.printer.printLine("");
@@ -167,9 +194,13 @@ public class MatchEx extends Match {
                         server.fibsout.println("double");
                         bg.printer.printLine("");
                         server.fibs.printFibsCommand("double");
+                    } else if(m7.find()) {
+                        server.fibsout.println("roll");
+                        bg.printer.printLine("");
+                        server.fibs.printFibsCommand("roll");
                     } else {
                         bg.printer.printLine("! NO HINT RESULT");
-                        throw new RuntimeException("No hing on roll");
+                        throw new RuntimeException("No hint on roll");
                     }
 
                     if (m6.find()) {
@@ -180,8 +211,13 @@ public class MatchEx extends Match {
                                 server.printDebug("NFEx parse eq on roll: " + e + " 1> " + m6.group(1) + " 0> " + m6.group(0) + " -> " + ex.getMessage());
                             }
                         }
-                        bg.printer.printLine("On roll");
+                        bg.printer.printLine("On roll ");
                         printEquities();
+                    } else {
+                        bg.printer.printLine("! NO EQUITIES RESULT");
+                        bg.printer.printLine("");
+                        bg.printer.print(content);
+                        //throw new RuntimeException("No equities on roll");
                     }
                 }
                 case HINT_TYPE_ON_DOUBLE -> {
@@ -198,7 +234,7 @@ public class MatchEx extends Match {
                         getMatchHistory().addCommand("reject");
                     } else {
                         bg.printer.printLine("! NO HINT RESULT");
-                        throw new RuntimeException("No hing on double");
+                        throw new RuntimeException("No hint on double");
                     }
                 }
             }
@@ -221,9 +257,9 @@ public class MatchEx extends Match {
             }
         }
 
-        return  String.join(" ", bar) + " " +
+        return  (String.join(" ", bar) + " " +
                 String.join(" ", other) + " " +
-                String.join(" ", off).trim();
+                String.join(" ", off)).trim();
     }
 
     public String transformCommand(String in) {
@@ -328,6 +364,8 @@ public class MatchEx extends Match {
             // expand m/n when abs(m-n) = die1 + die2, this covers
             // - two different die (not double) in one move
             // - both parts of a double X X when both chequers moved X then X
+            Dice myDice = board.getMyDice();
+            Dice oppDice = board.getOppDice();
             if ( myDice.getDie1() + myDice.getDie2() == Math.abs(m - n) /*||
                 (myDice.getDie1() + myDice.getDie2() - movedSoFar  > Math.abs(m - n) && n == 0)*/) {
 
@@ -449,7 +487,229 @@ public class MatchEx extends Match {
         return getGnubgMatchId() + ":" + getGnubgPositionId();
     }
 
-    protected void onNewGnubgId() {
-        getMatchHistory().clearCommandsSinceLastId();
+    private static class BS extends BitSet {
+
+        int ls = 0;
+
+        BS() {}
+
+        BS(int n) {
+            super(n);
+        }
+
+        @Override
+        public void set(int i, boolean v) {
+            ls++;
+            super.set(i, v);
+        }
+
+        @Override
+        public void set(int i, int j, boolean v) {
+            ls += (j - i);
+            super.set(i, j, v);
+        }
+
+        @Override
+        public String toString() {
+            String o = "", o1 = "";
+            for (int i = 0; i < ls; i++) {
+                o1 = o1.concat(get(i) ? "1" : "0");
+
+                if ((i + 1) % 8 == 0) {
+                    o1 = new StringBuilder(o1).reverse().toString();
+                    o1 = o1.concat(" ");
+                    o = o.concat(o1);
+                    o1 = "";
+                }
+            }
+
+            if (o1.length() > 0) {
+                o1 = new StringBuilder(o1).reverse().toString();
+                o = o.concat(o1);
+            }
+
+            return o;
+        }
     }
+
+    private void calculateGnubgPositionId() {
+
+        String[] b = board.getBoard().getState();
+        BitSet posX = new BS();
+        BitSet posO = new BS();
+
+        ByteBuffer buff = ByteBuffer.allocate((80 - 1) / 8 + 1);
+
+        // board
+        int pX = 0, pO = 0, idxX =0, idxO = 0, bitsSetX = 0, bitsSetO = 0;
+        for (int i = 1; i < 25; i++) {
+            idxX = i;
+            idxO = 25 - i;
+            try {
+                pX = Integer.parseInt(b[idxX]);
+                pO = Integer.parseInt(b[idxO]);
+            } catch (NumberFormatException e) {
+                e.printStackTrace();;
+            }
+
+            if (pX < 0) {
+                posX.set(bitsSetX, bitsSetX + Math.abs(pX), true);
+                bitsSetX += Math.abs(pX);
+            }
+            posX.set(bitsSetX++, false);
+
+            if (pO > 0) {
+                posO.set(bitsSetO, bitsSetO + Math.abs(pO), true);
+                bitsSetO += Math.abs(pO);
+            }
+            posO.set(bitsSetO++, false);
+
+        }
+
+        // bar
+        try {
+            pX = Math.abs(Integer.parseInt(b[0]));
+            pO = Math.abs(Integer.parseInt(b[25]));
+        } catch (NumberFormatException e) {
+            e.printStackTrace();
+        }
+
+        if (pX > 0) {
+            posX.set(bitsSetX, bitsSetX + Math.abs(pX), true);
+            bitsSetX += Math.abs(pX);
+        }
+        posX.set(bitsSetX++, false);
+
+        if (pO > 0) {
+            posO.set(bitsSetO, bitsSetO + Math.abs(pO), true);
+            bitsSetO += Math.abs(pO);
+        }
+        posO.set(bitsSetO++, false);
+
+
+
+        /*int p = 80 - (bitsSetX + bitsSetO);
+        BitSet pad = new BS(3);
+        String ps = "";
+        if (p > 0) {
+            ps = "0".repeat(p);
+        }*/
+
+        int padX = 40 - bitsSetX, padO = 40 - bitsSetO;
+        if (padX > 0) {
+            posX.set(bitsSetX, bitsSetX + padX, false);
+            bitsSetX += padX;
+        }
+
+        if (padO > 0) {
+            posO.set(bitsSetO, bitsSetO + padO, false);
+            bitsSetO += padO;
+        }
+
+
+        server.printDebug(" pid >>> " + bitsSetX + " " + posX.toString());
+        server.printDebug(" pid >>> " + bitsSetO + " " + posO.toString() + "|" /*+ ps*/);
+
+        //server.printDebug(" pid >2> " + pad.toString());
+
+
+        String comb = posO.toString().replaceAll(" ", "")
+                    + posX.toString().replaceAll(" ", "")
+                    /*+ ps*/;
+
+
+
+        server.printDebug("combo > > " + comb + " -> " + String.join(" ", comb.split("(?<=\\G.{8})")));
+
+        String[] cs = comb.split("(?<=\\G.{8})");
+        byte[] cb = new byte[cs.length];
+        for (int i = 0; i < cs.length; i++) {
+            String bys = cs[i];
+            cb[i] = (byte) Integer.parseInt(bys, 2);
+        }
+
+        // combine
+        /*byte[] ba = new byte[(posX.length() + 7) / 8];
+        ba = Arrays.copyOf(posX.toByteArray(), ba.length);
+        byte[] bb = new byte[(posO.length() + 7) / 8];
+        bb = Arrays.copyOf(posO.toByteArray(), bb.length);
+        byte[] bp = new byte[(pad.length() + 7) / 8];
+        bp = Arrays.copyOf(pad.toByteArray(), bp.length);
+        byte[] fin = new byte[ba.length + bb.length + bp.length];
+
+        server.printDebug(" 00 > " + p + " > " + bp.length + " " + Arrays.toString(bp));
+
+        System.arraycopy(ba, 0, fin, 0, ba.length);
+        System.arraycopy(bb, 0, fin, ba.length, bb.length);
+        System.arraycopy(bp, 0, fin, bb.length, bp.length);*/
+
+        String id = new String(Base64.getEncoder().encode(cb));
+
+        server.printDebug("dpi >> " + id + " > " + Arrays.toString(cb));
+
+        // encode and set
+        gnubgPositionId = id.substring(0, 14);
+    }
+
+    private void calculateGnubgMatchId() {
+
+        String mIdStr = "";
+        int mCube = (int)(Math.log(board.getDoublingCube()) / Math.log(2));
+        mIdStr += new StringBuilder(Integer.toBinaryString(0b10000 | mCube).substring(1)).reverse();
+        int mCubeOwner = board.iMayDouble() && board.oppMayDouble() ? 3 : (board.iMayDouble() ? 1 : 0);
+        mIdStr += new StringBuilder(Integer.toBinaryString(0b100 | mCubeOwner).substring(1)).reverse();
+        int mOnRoll = board.getColour() == board.getTurn() ? 0 : 1;
+        mIdStr += mOnRoll == 0 ? "0" : "1";
+        mIdStr += getCrawfordGame() == getGameno() ? "1" : "0";
+        mIdStr += new StringBuilder("001").reverse();
+        int mTurn = mOnRoll;
+        if (mOnRoll == 0 && isOwnDoubleInProgress()) {
+            mTurn = 1;
+        }
+        else if (mOnRoll == 1 && isOppDoubleInProgress()) {
+            mTurn = 0;
+        }
+        mIdStr += mTurn == 0 ? "0" : "1";
+        mIdStr += board.wasDoubled() ? "1" : "0";
+        mIdStr += "00"; // resignation offered
+        Dice d = isMyTurn() ? board.getMyDice() : board.getOppDice();
+        String mDie1 = Integer.toBinaryString(0b1000 | d.getDie1()).substring(1);
+        String mDie2 = Integer.toBinaryString(0b1000 | d.getDie2()).substring(1);
+        mIdStr += new StringBuilder(mDie1).reverse();
+        mIdStr += new StringBuilder(mDie2).reverse();
+        String mMl = Integer.toBinaryString(0b1000000000000000 | board.getMatchLength()).substring(1);
+        mIdStr += new StringBuilder(mMl).reverse();
+        String mMyScore = Integer.toBinaryString(0b1000000000000000 | board.getMyScore()).substring(1);
+        mIdStr += new StringBuilder(mMyScore).reverse();
+        String mOppScore = Integer.toBinaryString(0b1000000000000000 | board.getOppScore()).substring(1);
+        mIdStr += new StringBuilder(mOppScore).reverse();
+
+        // pad with '0' out to 72, then add a non zero, then cut off byte
+        // (BitSet.toByteArray() cuts off 0 bits from the end)
+        mIdStr += "0000001";
+
+        BitSet mId = new BS();
+        for (int c = 0; c < mIdStr.length(); c++) {
+            mId.set(c, mIdStr.charAt(c) == '1');
+        }
+
+        server.printDebug(" mid >>> " + mIdStr);
+        server.printDebug(" mid >>> " + mId.toString());
+
+        String id = new String(Base64.getEncoder().encode(mId.toByteArray()));
+
+        server.printDebug(" dmi >> " + id);
+
+        gnubgMatchId = id.substring(0, 12);
+    }
+
+    @Override
+    public void setBoard(FibsBoard board) {
+        super.setBoard(board);
+        calculateGnubgMatchId();
+        calculateGnubgPositionId();
+
+        server.printDebug(" gnubgid >>> " + getGnubgId());
+    }
+
 }

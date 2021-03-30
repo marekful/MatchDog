@@ -3,9 +3,7 @@ package matchdog;
 import jcons.src.com.meyling.console.UnixConsole;
 import matchdog.console.printer.DefaultPrinter;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,7 +21,7 @@ public class MatchHistory {
     private final Match match;
     private final Map<Integer, ArrayList<String>> commands;
 
-    private final ArrayList<String> commandsSinceLastId;
+    private ArrayList<String> commandsSinceLastId;
 
     private FileWriter writer;
     private FileWriter tmpWriter;
@@ -49,11 +47,16 @@ public class MatchHistory {
         printer = new DefaultPrinter(
             match.server, "MatchHistory", UnixConsole.LIGHT_RED, UnixConsole.BACKGROUND_WHITE
         );
-
         match.server.addPrinter(printer);
-
         this.match = match;
-        addInitialCommands();
+
+        if (match.wasResumed() && restorePosition()) {
+            printer.printLine("Resumed match, restored position");
+            match.resumeOK = true;
+        } else {
+            printer.printLine("Not resumed match or position not restored");
+            addInitialCommands();
+        }
     }
 
     private FileWriter getWriter() {
@@ -68,17 +71,52 @@ public class MatchHistory {
         return writer;
     }
 
-    private void deleteTempFile() {
-        File o = new File(getTempFileName() + ".tmp");
-        o.delete();
+    /*private void deleteTempFile() {
+        (new File(getTempFileName() + ".tmp")).delete();
+    }*/
+
+    private void deletePositionFile() {
+        (new File(getPosFileName() + ".pos.tmp")).delete();
     }
 
-    private void deletePosFile() {
-        File o = new File(getPosFileName() + ".pos.tmp");
-        o.delete();
+    public void savePosition() {
+        if (!(match instanceof MatchEx)) {
+            return;
+        }
+        try {
+            FileOutputStream fout = new FileOutputStream(getPositionSaveFileName() + ".position");
+            ObjectOutputStream oos = new ObjectOutputStream(fout);
+            oos.writeObject(
+                new LastMatchPosition(
+                    ((MatchEx)match).getGnubgMatchId(),
+                    ((MatchEx)match).getGnubgPositionId()
+                )
+            );
+            oos.close();
+        } catch (Exception e) { e.printStackTrace(); }
     }
 
-    private FileWriter getTmpWriter() {
+    private boolean restorePosition() {
+        if (!(match instanceof MatchEx)) {
+            return false;
+        }
+        try {
+            /*FileInputStream fin = new FileInputStream(getPositionSaveFileName() + ".position");
+            ObjectInputStream ois = new ObjectInputStream(fin);
+            LastMatchPosition pos = (LastMatchPosition) ois.readObject();
+            ois.close();
+            ((MatchEx)match).setGnubgMatchId(pos.matchId);
+            ((MatchEx)match).setGnubgPositionId(pos.positionId);
+            printer.printLine("restorePosition > " + ((MatchEx)match).getGnubgId());
+            printer.printLine("restorePosition > " + commandsSinceLastId.size());*/
+            return true;
+        } catch (Exception e) {
+            printer.printLine(e.toString());
+            return false;
+        }
+    }
+
+    /*private FileWriter getTmpWriter() {
         if (tmpWriter == null) {
             try {
                 deleteTempFile();
@@ -92,12 +130,12 @@ public class MatchHistory {
             }
         }
         return tmpWriter;
-    }
+    }*/
 
     private FileWriter getPositionWriter() {
         if (posWriter == null) {
             try {
-                deletePosFile();
+                deletePositionFile();
                 posRand = String.format("%.0f", Double.parseDouble(String.valueOf(Math.random())) * 10000);
 
                 File f = new File(getPosFileName() + ".pos.tmp");
@@ -123,7 +161,6 @@ public class MatchHistory {
     }
 
     private void addInitialCommands() {
-
         for (String command : getInitialCommands()) {
             addCommand(command);
         }
@@ -143,25 +180,15 @@ public class MatchHistory {
 
     }
 
-    public void clearCommandsSinceLastId() {
-        commandsSinceLastId.clear();
-    }
-
-    public void addCommandSinceLastId(String command) {
-        commandsSinceLastId.add(command);
-    }
-
     public int getWriteStrategy() {
         return writeStrategy;
     }
 
     public void addCommand(String command) {
 
-        addCommandSinceLastId(command);
-
-        if (match.wasResumed()) {
+        /*if (match.wasResumed()) {
             return; // not yet handled for dropped/resumed matches
-        }
+        }*/
 
         commands.computeIfAbsent(match.getGameno(), k -> new ArrayList<>());
         commands.get(match.getGameno()).add(command);
@@ -170,7 +197,7 @@ public class MatchHistory {
             writeOneLineToFile(command);
         }
 
-        printer.printLine("Command: " + command);
+        printer.printLine("Command[" + match.getRound() + "]:" + command);
 
         //match.sendCommand(command);
     }
@@ -206,17 +233,19 @@ public class MatchHistory {
         }
     }
 
-    public void writeToTempFile() throws IOException {
+    /*public void writeToTempFile() throws IOException {
         writeToFile(getTmpWriter(), false, true);
         Objects.requireNonNull(getTmpWriter()).flush();
         tmpWriter = null;
-    }
+    }*/
 
     public void writePositionToFile() throws IOException {
         FileWriter writer;
         if ((writer = getPositionWriter()) == null) {
             return;
         }
+
+        printer.printLine("writePositionToFile 0 > ");
 
         for (String command : getInitialCommands()) {
             writer.append(command).append(System.lineSeparator());
@@ -230,6 +259,7 @@ public class MatchHistory {
         }
 
         for (String s : commandsSinceLastId) {
+            printer.printLine("writePositionToFile 1 > " + s);
             writer.append(s).append(System.lineSeparator());
         }
 
@@ -239,8 +269,9 @@ public class MatchHistory {
                 .append("hint").append(System.lineSeparator())
                 .append(System.lineSeparator());
 
-        writer.flush();
+        writer.close();
         posWriter = null;
+
     }
 
     public void exportMatchToSgf() {
@@ -263,20 +294,28 @@ public class MatchHistory {
         return  dataDir + "matchlogs/" + match.id;
     }
 
-    public String getTempFileName() {
+    /*public String getTempFileName() {
         return dataDir + "matchlogs/" + match.id + "-" + rand;
     }
-
+*/
     public String getPosFileName() {
         return dataDir + "matchlogs/" + match.id + "-" + posRand;
     }
 
+    public String getPositionSaveFileName() {
+        return dataDir + "matchlogs/" + match.getMatchId();
+    }
+
     public void onMatchEnd() {
 
-        deleteTempFile();
-        deletePosFile();
+        //deleteTempFile();
+        if (match instanceof MatchEx && match.isDropped()) {
+            savePosition();
+        }
+        deletePositionFile();
 
-        if (!match.wasResumed && (writer = getWriter()) != null) {
+
+        if ((!match.wasResumed || match.resumeOK) && (writer = getWriter()) != null) {
             try {
                 if (writeStrategy == WRITE_FILE_PER_LINE) {
                     writer.append(System.lineSeparator())
@@ -297,7 +336,6 @@ public class MatchHistory {
                 e.printStackTrace();
             }
         }
-
 
         match.server.removePrinter(printer);
     }

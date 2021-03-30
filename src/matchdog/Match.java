@@ -3,12 +3,6 @@ package matchdog;
 import matchdog.fibsboard.Dice;
 import matchdog.fibsboard.FibsBoard;
 
-import java.io.FileWriter;
-import java.io.IOException;
-import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 public class Match {
@@ -19,9 +13,10 @@ public class Match {
 	int ml;
 	int [] score = {0,0};
 	int [] dice = {0,0};
-	Dice myDice;
-	Dice oppDice;
-	boolean ingame, shiftmove, oppgreeted, crawford, dropped, postcrawford, wasResumed;
+	//Dice myDice;
+	//Dice oppDice;
+	boolean ingame, shiftmove, oppgreeted, crawford;
+	boolean dropped, postcrawford, wasResumed, resumeOK;
 	int oppgreetphase;
 	int gameno;
 	int [] turn = {0, 0}; // 1,0 if my turn, 0,1 if opp's, 0,0 if no one's.
@@ -47,14 +42,15 @@ public class Match {
 	
 	double [] equities;
 	boolean ownResignInProgress, oppResignInProgress;
+	boolean ownDoubleInProgress, oppDoubleInProgress;
 
-	boolean releaseLockEx = false;
+	FibsBoard board;
 
 	// stores all gameplay commands from both players,
 	// used to generate and analyse .sgf match file at the end
 	public MatchHistory moveHistory;
 	
-	Match (MatchDog server, String oppname, int matchlength) {
+	Match (MatchDog server, String oppname, int matchlength, boolean resume) {
 
 		this.server = server;
 		player0 = server.prefs.getUsername();
@@ -65,7 +61,9 @@ public class Match {
 		shiftmove = false;
 		cube = 1;
 		cubeOwner = 0;
-		round = 0;	
+		round = 0;
+		wasResumed = resume;
+		resumeOK = false;
 		start = new Date();
 		id = generateMatchId();
 		gametime = start.getTime();
@@ -111,7 +109,9 @@ public class Match {
 		
 		ownResignInProgress = false;
 		oppResignInProgress = false;
-		
+		ownDoubleInProgress = false;
+		oppDoubleInProgress = false;
+
 		callcounter = 0;
 
 		// stamps should be set at match start
@@ -120,8 +120,12 @@ public class Match {
 	}
 
 	private String generateMatchId() {
-		return server.getPlayerName() + "-" + player1 + "-" + ml + "-"
+		return player0 + "-" + player1 + "-" + ml + "-"
 				+ start.toString().replace(" ", "-");
+	}
+
+	public String getMatchId() {
+		return player0 + "-" + player1 + "-" + ml;
 	}
 
 	protected void cancelWaitfor() {
@@ -163,8 +167,8 @@ public class Match {
 						" Accept or reject it.");
 			}
 			if(diff > 120000 && !isOwnResignInProgress()) {
-				server.printDebug("RESENDING lastboard (checkStamps)");
-				server.resendLastBoard();
+				//server.printDebug("RESENDING lastboard (checkStamps)");
+				//server.resendLastBoard();
 			}
 		} else if(isOppsTurn()) {
 			diff = now.getTime() - getOppstamp().getTime() - fibsDiff * 1000;
@@ -180,7 +184,7 @@ public class Match {
 			} else if(diff > 120000 && callcounter < 3) {
 				//server.resendLastBoard();
 				callcounter++;
-			} else if(diff > 180000) {
+			} else if(diff > 180000 && !server.programPrefs.getTestUsers().contains(server.getPlayerName())) {
 				server.printDebug("OPP IS INACTIVE for :" + diff / 1000 + " seconds, LEAVING");
 				server.fibsout.println("leave");
 			}
@@ -224,11 +228,7 @@ public class Match {
 
 		if (gameno < 1 && newgameno == 1) {
 			gameno = 1;
-			if (this instanceof MatchEx) {
-				moveHistory = new MatchHistory((MatchEx) this, MatchHistory.WRITE_FILE_AT_MATCH_END);
-			} else {
-				moveHistory = new MatchHistory(this, MatchHistory.WRITE_FILE_AT_MATCH_END);
-			}
+			moveHistory = new MatchHistory(this, MatchHistory.WRITE_FILE_AT_MATCH_END);
 		}
 
 		gameno = newgameno;
@@ -250,29 +250,29 @@ public class Match {
 		this.oppClient = oppClient;
 	}
 
-	public int[] getDice() {
+	/*public int[] getDice() {
 		return dice;
-	}
+	}*/
 
 	public Dice getMyDice() {
-		return myDice;
+		return board.getMyDice();
 	}
 
-	public void setMyDice(Dice myDice) {
+	/*public void setMyDice(Dice myDice) {
 		this.myDice = myDice;
-	}
+	}*/
 
 	public Dice getOppDice() {
-		return oppDice;
+		return board.getOppDice();
 	}
 
-	public void setOppDice(Dice oppDice) {
+	/*public void setOppDice(Dice oppDice) {
 		this.oppDice = oppDice;
-	}
+	}*/
 
-	public void setDice(int[] dice) {
+	/*public void setDice(int[] dice) {
 		this.dice = dice;
-	}
+	}*/
 
 	public int[] getTurn() {
 		return turn;
@@ -472,9 +472,9 @@ public class Match {
 		return wasResumed;
 	}
 
-	public void setWasResumed(boolean wasResumed) {
+	/*public void setWasResumed(boolean wasResumed) {
 		this.wasResumed = wasResumed;
-	}
+	}*/
 
 	public boolean isOwnResignInProgress() {
 		return ownResignInProgress;
@@ -484,7 +484,31 @@ public class Match {
 		this.ownResignInProgress = ownResignInProgress;
 	}
 
-    public boolean isFinished() {
+	public boolean isOppResignInProgress() {
+		return oppResignInProgress;
+	}
+
+	public void setOppResignInProgress(boolean oppResignInProgress) {
+		this.oppResignInProgress = oppResignInProgress;
+	}
+
+	public boolean isOwnDoubleInProgress() {
+		return ownDoubleInProgress;
+	}
+
+	public void setOwnDoubleInProgress(boolean ownDoubleInProgress) {
+		this.ownDoubleInProgress = ownDoubleInProgress;
+	}
+
+	public boolean isOppDoubleInProgress() {
+		return oppDoubleInProgress;
+	}
+
+	public void setOppDoubleInProgress(boolean oppDoubleInProgress) {
+		this.oppDoubleInProgress = oppDoubleInProgress;
+	}
+
+	public boolean isFinished() {
         return finished;
     }
 
@@ -492,12 +516,12 @@ public class Match {
         this.finished = finished;
     }
 
-    public boolean isOppResignInProgress() {
-		return oppResignInProgress;
+	public FibsBoard getBoard() {
+		return board;
 	}
 
-	public void setOppResignInProgress(boolean oppResignInProgress) {
-		this.oppResignInProgress = oppResignInProgress;
+	public void setBoard(FibsBoard board) {
+		this.board = board;
 	}
 
 	public MatchHistory getMatchHistory() {

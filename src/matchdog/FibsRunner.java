@@ -42,7 +42,7 @@ public class FibsRunner extends Thread {
 
 	// used in processGamePlay
 	boolean wOppMoveBoard, wOppDoubleBoard, wOppRollBoard, wRollBoard, wMoveBoard, wResumeBoard;
-	boolean ownDoubleInProgress, wScoreBoard, wToggle, resume, wasResumed;
+	boolean ownDoubleInProgress, wScoreBoard, wToggle, resume/*, wasResumed*/;
 
 	// Fibs message types from 1 to 20 (0 doesn't count) to process 
 	// (and print to console) during game play. 
@@ -126,7 +126,7 @@ public class FibsRunner extends Thread {
 		wMoveBoard = false;
 		ownDoubleInProgress = false;
 		resume = false;
-		wasResumed = false;
+		//wasResumed = false;
 		wScoreBoard = false; // ? not in use
 		wToggle = false;
 		this.host = host;
@@ -790,7 +790,7 @@ public class FibsRunner extends Thread {
 						+ "! Let's play our saved match first.");
 				server.printDebug("Inviting for SAVED MATCH (" + opp + ")");
 	
-			} else if (server.prefs.isAutojoin()) {
+			} else if (server.prefs.isAutojoin() || server.isTestUser(opp)) {
 				if (ml > server.prefs.getMaxml()) {
 					setInvitationInProgress(false);
 					server.printDebug("Not joining invitation - maxml: " + ml + " > " + server.prefs.getMaxml()
@@ -813,7 +813,7 @@ public class FibsRunner extends Thread {
 							+ " I play matches up to "
 							+ server.prefs.getMaxml() + " points.");
 					}
-				} else if (oppexp / server.prefs.getExpdivider() < ml) {
+				} else if (oppexp / server.prefs.getExpdivider() < ml && !server.isTestUser(opp)) {
 					setInvitationInProgress(false);
 					server.printDebug("Not joining invitation - not enough exp: " + (oppexp / server.prefs.getExpdivider()) + " < " + ml);
 					server.fibsout.println("tell " + opp
@@ -821,7 +821,7 @@ public class FibsRunner extends Thread {
 					sleepFibs(200);
 					server.fibsout.println("tell " + opp + " (Let match length be less than your experience / "
                             + server.prefs.getExpdivider() + ")");
-				} else if (opprep < server.prefs.getReplimit()) {
+				} else if (opprep < server.prefs.getReplimit() && !server.isTestUser(opp)) {
 					setInvitationInProgress(false);
 					server.printDebug("Not joining invitation - bad rep: " + opprep + " < " + server.prefs.getReplimit());
 					server.fibsout.println("tell " + opp
@@ -1076,15 +1076,13 @@ public class FibsRunner extends Thread {
 
 		if (inputHasBoard) {
 			inputBoard = new FibsBoard(in);
+			match.setBoard(inputBoard);
 		}
 
 		///// PROCESS RESUME PARAMS ////
 		// If match was started with resume=true this section is processed
 		// until resume is set to false when all resume parameters are set.
 		if (resume) {
-
-			match.setGameno(1);
-			match.setRound(1);
 
 			String parseStr;
 			int score;
@@ -1098,6 +1096,9 @@ public class FibsRunner extends Thread {
 					ml = Integer.parseInt(parseStr.trim());
 					match.setMl(ml);
 					resumeBits[1] = true;
+
+					match.setGameno(1);
+					match.setRound(1);
 
 					server.printDebug("ml set to: " + ml);
 				} catch (NumberFormatException e) {
@@ -1164,8 +1165,8 @@ public class FibsRunner extends Thread {
         {
             server.printDebug("finished setting resumeparams, requesting board from fibs");
             resume = false;
-            wasResumed = true;
-            match.setWasResumed(true);
+            //wasResumed = true;
+            //match.setWasResumed(true);
             resetWaitFlags();
             wResumeBoard = true;
             sleepFibs(300);
@@ -1201,7 +1202,6 @@ public class FibsRunner extends Thread {
 				if (d1 == d2)
 					return;
 
-				match.setRound(1);
 				if (d1 > d2) {
 					match.setTurn(new int[] { 1, 0 });
 					wRollBoard = true;
@@ -1210,11 +1210,12 @@ public class FibsRunner extends Thread {
 					match.setTurn(new int[] { 0, 1 });
 				}
 
-				match.setDice(new int[] { d1, d2 });
+				//match.setDice(new int[] { d1, d2 });
 
 				if (match.getGameno() < 1) {
 					match.setGameno(1); // also creates match.moveHistory
 				}
+				match.setRound(1);
 				match.moveHistory.addCommand("new game");
 				//match.moveHistory.addCommand("set turn " + (match.isMyTurn() ? server.getPlayerName() : match.getPlayer1()));
 				match.moveHistory.setTurn();
@@ -1373,6 +1374,7 @@ public class FibsRunner extends Thread {
 			//server.printDebug("in: " + in);
 			server.printDebug("END GAME - MatchDog gave up double");
 
+			match.setOppDoubleInProgress(false);
 			match.setRound(0);
 			match.setTurn(new int[] { 0, 0 });
 
@@ -1423,6 +1425,7 @@ public class FibsRunner extends Thread {
 			printMatchInfo();
 			ownDoubleInProgress = false;
 			match.setIngame(false);
+			match.setOwnDoubleInProgress(false);
 			match.setRound(0);
 			match.setTurn(new int[] { 0, 0 });
 
@@ -1545,7 +1548,7 @@ public class FibsRunner extends Thread {
 			if (resignpts == lastBoard.getDoublingCube()) {
 
 				// there's chance for win/gammon, so reject
-				if(match.equities[1] > 0.01 ) {
+				if(match.equities[1] > 0.03 ) {
 					server.printDebug("** RESIGN n REJECTED [resignpts: " + resignpts
 							+ " ml: " + match.getMl() + " score: " + match.getScore()[0] 
 							+ "-" + match.getScore()[1] + " EQ win/normal: " 
@@ -1584,7 +1587,7 @@ public class FibsRunner extends Thread {
 			else if (resignpts == lastBoard.getDoublingCube() * 2) {
 				
 				// there's chance to win backgammon, so reject
-				if(match.equities[2] > 0.0) {
+				if(match.equities[2] > 0.02) {
 					server.printDebug("** RESIGN g REJECTED [resignpts: " + resignpts
 							+ " ml: " + match.getMl() + " score: " + match.getScore()[0] 
   							+ "-" + match.getScore()[1] + " EQ win/normal: " 
@@ -1602,7 +1605,7 @@ public class FibsRunner extends Thread {
 				}
 
 				// it's sure we can't win backgammon, so accept
-				else if(match.equities[2] == 0.0) {
+				else if(match.equities[2] < 0.02) {
 					server.printDebug("** RESIGN g ACCEPTED [resignpts: " + resignpts
 							+ " ml: " + match.getMl() + " score: " + match.getScore()[0] 
   							+ "-" + match.getScore()[1] + " EQ win/normal: " 
@@ -1660,14 +1663,24 @@ public class FibsRunner extends Thread {
 				server.printDebug(" [ ml: " + match.getMl() + " opp's score: "
 						+ inputBoard.getOppScore() + " crawford score: "
 						+ match.getCrawfordscore() + " wasResumed: "
-						+ wasResumed + " turn: " + match.getTurn()[0] + " " + match.getTurn()[1] +" ]");
+						+ match.wasResumed + " turn: " + match.getTurn()[0] + " " + match.getTurn()[1] +" ]");
+
+				// GOT DOUBLE ON RESUME
+				if (match.wasResumed && match.isOppsTurn() && inputBoard.wasDoubled()) {
+					if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT && match.resumeOK) {
+						((MatchEx) match).getHint(MatchEx.HINT_TYPE_ON_ROLL);
+					} else {
+						server.gnubg.execBoard(in);
+					}
+				}
+
 				// CRAWFORD
 				if (match.getMl() > 1
 						&& (match.getMl() - inputBoard.getOppScore() == 1)
 						&& !match.oneToWin()) {
 
 					if (match.getCrawfordscore() == -1
-							&& !(wasResumed && inputBoard.didCrawford())) {
+							&& !(match.wasResumed && inputBoard.didCrawford())) {
 						match.setCrawford(true);
 						match.setCrawfordscore(match.getScore()[0]);
 						match.setCrawfordGame(match.getGameno());
@@ -1691,18 +1704,33 @@ public class FibsRunner extends Thread {
 			if (match.isMyTurn()) {
 	
 				if (inputHasBoard && wResumeBoard) {
-					server.printDebug("got resume board, sending to bgsocket");
+					server.printDebug("got resume board, sending to bgsocket -" + match.wasResumed + " - " + match.resumeOK);
 					//-//setResumeCube(in);
 					match.setCube(inputBoard.getDoublingCube()); //-
 					wResumeBoard = false;
 					//-//setDirection(in);
 					match.setShiftmove(inputBoard.getDirection() == 1); //-
 
-					if (inputBoard.getMyDice().getDie1() > 0 && inputBoard.getMyDice().getDie2() > 0) {
+					// ??
+					/*if (inputBoard.getMyDice().getDie1() > 0 && inputBoard.getMyDice().getDie2() > 0) {
 						match.setTurn(new int[] { 0, 1 });
-					}
+					}*/
+
 					match.setRound(match.getRound() + 1);
-					server.gnubg.execBoard(in);
+
+					if ((match.wasResumed && !match.resumeOK) || server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_EXTERNAL) {
+						server.gnubg.execBoard(in);
+					} else if (match instanceof MatchEx) {
+						if (match.isMyTurn()) {
+							if (match.getBoard().wasDoubled()) {
+								((MatchEx) match).getHint(MatchEx.HINT_TYPE_ON_DOUBLE);
+							} else if(match.getBoard().myDiceAreNotSet()) {
+								((MatchEx) match).getHint(MatchEx.HINT_TYPE_ON_ROLL);
+							} else {
+								((MatchEx) match).getHint(MatchEx.HINT_TYPE_ON_MOVE);
+							}
+						}
+					}
 					return;
 				}
 
@@ -1719,13 +1747,15 @@ public class FibsRunner extends Thread {
 					wRollBoard = false;
 					//-//setDirection(in);
 					match.setShiftmove(inputBoard.getDirection() == 1); //-
-					match.setMyDice(inputBoard.getMyDice());
+					//match.setMyDice(inputBoard.getMyDice());
 
 					if (match.getRound() > 1) {
 						match.moveHistory.addCommand("set dice " + inputBoard.getMyDice().getDie1() + " " + inputBoard.getMyDice().getDie2());
 					}
 
-					if (wasResumed || server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_EXTERNAL) {
+					server.printDebug("wasResumed: " + match.wasResumed + ", resumeOK: " + match.resumeOK);
+					if ((  match.wasResumed && !match.resumeOK)
+						|| server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_EXTERNAL) {
 						//// GET EQUITITES
 						server.gnubg.execEval(in);
 
@@ -1740,7 +1770,7 @@ public class FibsRunner extends Thread {
 					///----->
 					if(inputBoard.getCanMove() > 0) {
 
-						if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT && !match.wasResumed) {
+						if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT && (!match.wasResumed || match.resumeOK)) {
 							((MatchEx)match).getHint(MatchEx.HINT_TYPE_ON_MOVE);
 						} else {
 							server.gnubg.execBoard(in);
@@ -1779,7 +1809,7 @@ public class FibsRunner extends Thread {
 				if (in.startsWith("You double.")) {
 					server.printDebug("got 'You double.'");
 					server.printDebug("turn: " + match.turn[0] + " " + match.turn[1]);
-
+					match.setOwnDoubleInProgress(true);
 					match.moveHistory.addCommand("double");
 
 					ownDoubleInProgress = true;
@@ -1793,7 +1823,7 @@ public class FibsRunner extends Thread {
 					server.printDebug("last doubled in round: " + doubledInRound);
 					if(match.getRound() > doubledInRound) {
 						server.printDebug("got ACCEPT response to own double, waiting for roll board");
-
+						match.setOwnDoubleInProgress(false);
 						match.moveHistory.addCommand("accept");
 
 						match.setCube(match.getCube() * 2);
@@ -1867,7 +1897,7 @@ public class FibsRunner extends Thread {
 				}
 				else if (inputHasBoard && wOppRollBoard) {
 					wOppRollBoard = false;
-					match.setOppDice(inputBoard.getOppDice());
+					//match.setOppDice(inputBoard.getOppDice());
 
 					if (match.getRound() > 1) {
 						match.moveHistory.addCommand("set dice " + inputBoard.getOppDice().getDie1() + " " + inputBoard.getOppDice().getDie2());
@@ -1906,7 +1936,7 @@ public class FibsRunner extends Thread {
 								+ (match.getCrawfordscore() > -1 ? " crawford-score: " + match.getCrawfordscore() : "")
 								+ "]");
 
-						if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT && !match.wasResumed) {
+						if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT && (!match.wasResumed || match.resumeOK)) {
 							((MatchEx) match).getHint(MatchEx.HINT_TYPE_ON_ROLL);
 						} else {
 
@@ -1938,8 +1968,9 @@ public class FibsRunner extends Thread {
 					server.printDebug("got OPP doubles, waiting for OPP double board");
 					//printMatchInfo();
 					wOppDoubleBoard = true;
-					server.fibsout.println("board");
+					match.setOppDoubleInProgress(true);
 
+					server.fibsout.println("board");
 					match.moveHistory.addCommand("double");
 
 					return;
@@ -1951,6 +1982,7 @@ public class FibsRunner extends Thread {
 						match.setCube(match.getCube() * 2);
 						match.setCubeOwner(-1);
 						doubledInRound = match.getRound();
+						match.setOppDoubleInProgress(false);
 
 						match.getMatchHistory().addCommand("accept");
 
@@ -1970,7 +2002,7 @@ public class FibsRunner extends Thread {
 					server.printDebug("got OPP double board, sending to bgsocket");
 					wOppDoubleBoard = false;
 
-					if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT && !match.wasResumed) {
+					if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT && (!match.wasResumed || match.resumeOK)) {
 						((MatchEx) match).getHint(MatchEx.HINT_TYPE_ON_DOUBLE);
 					} else {
 
@@ -2004,7 +2036,7 @@ public class FibsRunner extends Thread {
 						///<-----
 					}
 				}
-			}
+			} //// END: OPP's TURN
 		} //// END: PROCESS TURN
 	} //// END: PROCESSGAMEPLAY
 
@@ -2063,11 +2095,10 @@ public class FibsRunner extends Thread {
 		try {
 	
 			int ml = Integer.parseInt(mlstr);
-			//this.match = new MatchEx(server, oppname, ml);
 			if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_EXTERNAL) {
-				this.match = new Match(server, oppname, ml);
+				this.match = new Match(server, oppname, ml, resume);
 			} else if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT) {
-				this.match = new MatchEx(server, oppname, ml);
+				this.match = new MatchEx(server, oppname, ml, resume);
 			} else {
 				throw new RuntimeException("Unknown gnubg type");
 			}
@@ -2075,15 +2106,13 @@ public class FibsRunner extends Thread {
 			server.matchCount++;
 			server.setFibsMode(2);
 
-			if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT && resume) {
+			if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT || resume) {
 				server.initBGRunner();
 			}
 
 			if (server.gnubg != null) {
 				server.gnubg.startExternal();
 			}
-
-			//while (!server.bgsocket.run) {}
 	
 			server.printDebug("new fibsmode:" + server.getFibsMode() + ", round: "
 					+ match.getRound() + " leaving startMatch");
@@ -2200,7 +2229,7 @@ public class FibsRunner extends Thread {
 		}
 		match = null;
 		server.setFibsMode(0);
-		wasResumed = false;		
+		//wasResumed = false;
 		server.printDebug("*** match terminated ***");	
 		sleepFibs(1200);
 		server.fibsout.println("toggle r");
@@ -2297,7 +2326,7 @@ public class FibsRunner extends Thread {
 		resumeBits[1] = false;
 		resumeBits[2] = false;
 		resumeBits[3] = false;
-		wasResumed = false;
+		//wasResumed = false;
 	}
 
 	private void resetWaitFlags() {
