@@ -85,7 +85,7 @@ public class Gnubg {
             try {
                 p = createWithCommand(command);
                 pid = p.pid();
-
+                printer.resetLabel();
                 printer.setLabel( printer.getLabel() + "[pid=" + pid + "]:");
                 if (verbose) {
                     printer.printLine("gnubg running (" + command + ")");
@@ -153,7 +153,7 @@ public class Gnubg {
             println("set rollout chequerplay deterministic on", processReply);
         }
 
-        println("relational setup SQLite-database=" + server.getPlayerName(), processReply);
+        //println("relational setup SQLite-database=" + server.getPlayerName(), processReply);
 
         println("show evaluation");
         println("show rollout");

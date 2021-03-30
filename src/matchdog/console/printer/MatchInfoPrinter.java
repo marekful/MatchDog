@@ -30,7 +30,7 @@ public class MatchInfoPrinter extends BufferedConsolePrinter {
         }
 
         printLine(
-            UnixConsole.RED + UnixConsole.BACKGROUND_CYAN +
+            UnixConsole.BLACK + UnixConsole.BACKGROUND_WHITE +
             dog.getMatch().matchInfo() + UnixConsole.RESET
         );
     }

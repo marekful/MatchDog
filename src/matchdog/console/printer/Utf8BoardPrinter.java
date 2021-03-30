@@ -43,8 +43,8 @@ public class Utf8BoardPrinter extends MatchInfoPrinter {
 
         String[] state = board.getBoard().getState();
         Match m = dog.getMatch();
-        Dice myDice = m.getMyDice();
-        Dice oppDice = m.getOppDice();
+        Dice myDice = m.getBoard().getMyDice();
+        Dice oppDice = m.getBoard().getOppDice();
 
         String asciiBoard = template
             .replace("xb", "x" + state[0].replace("-", ""))
