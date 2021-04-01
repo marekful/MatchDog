@@ -1747,7 +1747,7 @@ public class FibsRunner extends Thread {
 					wRollBoard = false;
 					//-//setDirection(in);
 					match.setShiftmove(inputBoard.getDirection() == 1); //-
-					//match.setMyDice(inputBoard.getMyDice());
+					match.setMyDice(inputBoard.getMyDice());
 
 					if (match.getRound() > 1) {
 						match.moveHistory.addCommand("set dice " + inputBoard.getMyDice().getDie1() + " " + inputBoard.getMyDice().getDie2());
@@ -1897,7 +1897,7 @@ public class FibsRunner extends Thread {
 				}
 				else if (inputHasBoard && wOppRollBoard) {
 					wOppRollBoard = false;
-					//match.setOppDice(inputBoard.getOppDice());
+					match.setOppDice(inputBoard.getOppDice());
 
 					if (match.getRound() > 1) {
 						match.moveHistory.addCommand("set dice " + inputBoard.getOppDice().getDie1() + " " + inputBoard.getOppDice().getDie2());

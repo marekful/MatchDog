@@ -13,8 +13,8 @@ public class Match {
 	int ml;
 	int [] score = {0,0};
 	int [] dice = {0,0};
-	//Dice myDice;
-	//Dice oppDice;
+	Dice myDice;
+	Dice oppDice;
 	boolean ingame, shiftmove, oppgreeted, crawford;
 	boolean dropped, postcrawford, wasResumed, resumeOK;
 	int oppgreetphase;
@@ -159,7 +159,7 @@ public class Match {
 		long diff;
 		long fibsDiff = server.fibs.getFibsLastLineSecondsAgo();
 		
-		if(isMyTurn()) {
+		if(isMyTurn() && !ownDoubleInProgress) {
 			diff = now.getTime() - getMystamp().getTime() - fibsDiff * 1000;
 			server.printDebug("(my diff is " + diff + "(" + fibsDiff * 1000 + ") ms)");
 			if (diff > 40000 && isOwnResignInProgress()) {
@@ -170,7 +170,7 @@ public class Match {
 				//server.printDebug("RESENDING lastboard (checkStamps)");
 				//server.resendLastBoard();
 			}
-		} else if(isOppsTurn()) {
+		} else if(isOppsTurn() && !oppDoubleInProgress) {
 			diff = now.getTime() - getOppstamp().getTime() - fibsDiff * 1000;
 			server.printDebug("(opp's diff is " + (diff / 1000) + "(" + fibsDiff + ") sec)");
 			if(diff > 60000 && callcounter < 2) {
@@ -255,20 +255,20 @@ public class Match {
 	}*/
 
 	public Dice getMyDice() {
-		return board.getMyDice();
+		return myDice;
 	}
 
-	/*public void setMyDice(Dice myDice) {
+	public void setMyDice(Dice myDice) {
 		this.myDice = myDice;
-	}*/
+	}
 
 	public Dice getOppDice() {
-		return board.getOppDice();
+		return oppDice;
 	}
 
-	/*public void setOppDice(Dice oppDice) {
+	public void setOppDice(Dice oppDice) {
 		this.oppDice = oppDice;
-	}*/
+	}
 
 	/*public void setDice(int[] dice) {
 		this.dice = dice;

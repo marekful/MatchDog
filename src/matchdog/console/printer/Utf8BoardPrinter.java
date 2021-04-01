@@ -43,15 +43,15 @@ public class Utf8BoardPrinter extends MatchInfoPrinter {
 
         String[] state = board.getBoard().getState();
         Match m = dog.getMatch();
-        Dice myDice = m.getBoard().getMyDice();
-        Dice oppDice = m.getBoard().getOppDice();
+        Dice myDice = m.getMyDice();
+        Dice oppDice = m.getOppDice();
 
         String asciiBoard = template
             .replace("xb", "x" + state[0].replace("-", ""))
             .replace("ob",  "o" + state[25])
 
-            .replace("pl0", dog.getPlayerName())
-            .replace("pl1", dog.getMatch().getPlayer1())
+            .replace("pl" + (board.getColour() == 1 ? "0" : "1"), dog.getPlayerName())
+            .replace("pl" + (board.getColour() == 1 ? "1" : "0"), dog.getMatch().getPlayer1())
 
             .replace("d1", " " + (myDice != null && !m.isMyTurn() ? dieFaces.get(myDice.getDie1()) : " "))
             .replace("d2", " " + (myDice != null && !m.isMyTurn() ? dieFaces.get(myDice.getDie2()) : " "))
