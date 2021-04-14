@@ -2,6 +2,7 @@ package matchdog;
 import jcons.src.com.meyling.console.UnixConsole;
 import matchdog.console.printer.BufferedConsolePrinter;
 import matchdog.console.printer.DefaultPrinter;
+import matchdog.fibsboard.FibsBoard;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -149,8 +150,13 @@ public class Gnubg {
         }
 
         if (server.prefs.getNoise() > 0.0) {
-            println("set rollout chequerplay noise noise " + server.prefs.getNoise(), processReply);
-            println("set rollout chequerplay deterministic on", processReply);
+            println("set analysis chequerplay eval noise " + server.prefs.getNoise(), processReply);
+            println("set analysis chequerplay eval deterministic off");
+            println("set analysis cubedecision eval noise " + server.prefs.getNoise(), processReply);
+            println("set analysis cubedecision eval deterministic off");
+        } else {
+            println("set analysis chequerplay eval noise 0.000");
+            println("set analysis cubedecision eval noise 0.000");
         }
 
         //println("relational setup SQLite-database=" + server.getPlayerName(), processReply);
@@ -293,8 +299,20 @@ public class Gnubg {
     }
 
     // sock
-    public synchronized void execBoard(String board) {
+    /*public synchronized void execBoard(String board) {
         execCommand(board);
+    }*/
+
+    public synchronized void execBoard(String board, boolean swapScores) {
+        FibsBoard b = new FibsBoard(board);
+
+        if (swapScores) {
+            int myScore = b.getMyScore();
+            b.setMyScore(b.getOppScore());
+            b.setOppScore(myScore);
+        }
+
+        execCommand(b.toString());
     }
 
     public synchronized void execEval(String board) {

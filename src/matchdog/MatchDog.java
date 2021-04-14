@@ -323,7 +323,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, 
                     outputName = "bgsocket.out";
                 } else if (line.equals("8")) {
                     if (fibs.lastboard != null) {
-                        gnubg.execBoard(fibs.lastboard.trim());
+                        gnubg.execBoard(fibs.lastboard.trim(), !getMatch().getBoard().wasDoubled());
                     }
                     continue;
                 } else if (line.equals("16")) {
@@ -601,7 +601,7 @@ public class MatchDog extends Prefs implements Runnable, PrintableStreamSource, 
 		fibsout.println("b");
 		printer.printLine("Resending last board: " + fibs.lastboard);
 		fibs.sleepFibs(600);
-		gnubg.execBoard(fibs.lastboard.trim());
+		gnubg.execBoard(fibs.lastboard.trim(), !getMatch().getBoard().wasDoubled());
 	}
 
 	protected void initPlayerStats() {

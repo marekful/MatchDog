@@ -77,7 +77,7 @@ public class MatchDogServer {
 	}
 
     private void initPlayers() {
-        for(int p = 1; p < 11; p++) {
+        for(int p = 1; p < 15; p++) {
             try {
                 Properties playerPrefs = new Properties();
                 FileInputStream in = new FileInputStream("../config/" + p + ".pprefs");

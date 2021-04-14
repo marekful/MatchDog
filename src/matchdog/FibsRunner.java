@@ -562,7 +562,7 @@ public class FibsRunner extends Thread {
 			}
 			if(resendlastboard) {
 				resendlastboard = false;
-				server.gnubg.execBoard(in);
+				server.gnubg.execBoard(in, !match.getBoard().wasDoubled());
 			}
 		}
 	
@@ -1487,7 +1487,7 @@ public class FibsRunner extends Thread {
 			match.setOwnResignInProgress(false);
 			server.printDebug("Resignation rejected by opp");
 			wMoveBoard = true;
-			server.gnubg.execBoard(lastboard);
+			server.gnubg.execBoard(lastboard, true);
 
 			if (match.isMyTurn()) {
 				match.moveHistory.addCommand("set turn " + match.getPlayer1());
@@ -1670,7 +1670,7 @@ public class FibsRunner extends Thread {
 					if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT && match.resumeOK) {
 						((MatchEx) match).getHint(MatchEx.HINT_TYPE_ON_ROLL);
 					} else {
-						server.gnubg.execBoard(in);
+						server.gnubg.execBoard(in, true);
 					}
 				}
 
@@ -1719,7 +1719,7 @@ public class FibsRunner extends Thread {
 					match.setRound(match.getRound() + 1);
 
 					if ((match.wasResumed && !match.resumeOK) || server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_EXTERNAL) {
-						server.gnubg.execBoard(in);
+						server.gnubg.execBoard(in, !match.getBoard().wasDoubled());
 					} else if (match instanceof MatchEx) {
 						if (match.isMyTurn()) {
 							if (match.getBoard().wasDoubled()) {
@@ -1773,7 +1773,7 @@ public class FibsRunner extends Thread {
 						if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT && (!match.wasResumed || match.resumeOK)) {
 							((MatchEx)match).getHint(MatchEx.HINT_TYPE_ON_MOVE);
 						} else {
-							server.gnubg.execBoard(in);
+							server.gnubg.execBoard(in, true);
 						}
 					}
 					///<------
@@ -1941,7 +1941,7 @@ public class FibsRunner extends Thread {
 						} else {
 
 							///------> roll--board (roll or double)
-							server.gnubg.execBoard(in);
+							server.gnubg.execBoard(in, true);
 							///<------
 						}
 
@@ -2005,35 +2005,8 @@ public class FibsRunner extends Thread {
 					if (server.prefs.getGnubgType() == PlayerPrefs.GNUBG_USE_HINT && (!match.wasResumed || match.resumeOK)) {
 						((MatchEx) match).getHint(MatchEx.HINT_TYPE_ON_DOUBLE);
 					} else {
-
-						//-//server.bgRunner.execBoard(in);
-
-						/*
-						 * There has been a fair amount of confusion about
-						 * when to swap sides mid-game before doing an eval
-						 * or rollout. Examining gnubg sources and looking at
-						 * how many times and from where swapSides() is called
-						 * and on what conditions and how these change between
-						 * different revisions reveals some insight into this.
-						 * See also https://savannah.gnu.org/bugs/?36485
-						 *
-						 * With gnubg version 1.06.002 (as compared to 1.05.002),
-						 * I observed incorrect responses to opp's double which were
-						 * consistent with a swapped side board command.
-						 * This is a largely untested fix attempt based on a
-						 * handful of observations and the output of the Perl
-						 * test script on the Savannah page (which strangely
-						 * produces the same errors for both tested versions
-						 * so I wonder what was fixed when... :))
-						 *
-						 * Anyways, gnubg "internally" obviously always handles this
-						 * correctly, the problem only surfaces when input is via
-						 * the external interface (i.e. fibsboard).
-						 *
-						 * */
-						///-----> double--board (take or drop)
-						server.gnubg.execBoard(in);
-						///<-----
+						// no score swapping here
+						server.gnubg.execBoard(in, false);
 					}
 				}
 			} //// END: OPP's TURN
