@@ -162,13 +162,13 @@ public class Match {
 		if(isMyTurn() && !ownDoubleInProgress) {
 			diff = now.getTime() - getMystamp().getTime() - fibsDiff * 1000;
 			server.printDebug("(my diff is " + diff + "(" + fibsDiff * 1000 + ") ms)");
-			if (diff > 40000 && isOwnResignInProgress()) {
+			if (diff > 30000 && isOwnResignInProgress()) {
 				server.fibsout.println("k I resigned, check your client!" +
 						" Accept or reject it.");
 			}
-			if(diff > 120000 && !isOwnResignInProgress()) {
-				//server.printDebug("RESENDING lastboard (checkStamps)");
-				//server.resendLastBoard();
+			if(diff > 60000 && !isOwnResignInProgress()) {
+				server.printDebug("RESENDING lastboard (checkStamps)");
+				server.resendLastBoard();
 			}
 		} else if(isOppsTurn() && !oppDoubleInProgress) {
 			diff = now.getTime() - getOppstamp().getTime() - fibsDiff * 1000;
@@ -181,7 +181,7 @@ public class Match {
 				server.fibs.sleepFibs(250);
 				callcounter++;
 				
-			} else if(diff > 120000 && callcounter < 3) {
+			} else if(diff > 90000 && callcounter < 3) {
 				//server.resendLastBoard();
 				callcounter++;
 			} else if(diff > 180000 && !server.programPrefs.getTestUsers().contains(server.getPlayerName())) {
