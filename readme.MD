@@ -107,9 +107,9 @@ wrap            NO
 
 NOTE! 
 Specify global parameters in `config/matchdog.prefs` 
-and at least one user `config/[n].pprefs` before running. 
+and at least one user in `config/[n].pprefs` before running. 
 
-See comments `config/0.pprefs.sample`
+See comments in `config/0.pprefs.sample`
 
 Also, for the 'show log' function to work, the first five
 variables in the included `ftpupload.sh` file need to be set.
@@ -157,8 +157,8 @@ By passing 0 as a second command line argument, stdin and stdout are not attache
 and MatchDog runs silently.
 
 When `i_listenerport` in the user pprefs file is set to a valid port number,
-MatchDog will expose that port on the host machine if it can and
-accept connections on it. This allows for remote monitoring of the bot.
+MatchDog will expose that port on the host machine if it is permitted to do so and
+accept connections on it. This allows for remote monitoring or controlling of the bot.
 
 
 **Example gnubg initialisation command sequence**
